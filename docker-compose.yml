@@ -1,0 +1,33 @@
+services:
+  z11_console:
+    build: .
+    # 若服务器拉取 docker.io 基础镜像失败（镜像源失效），可改用 AWS ECR 公共镜像：
+    # build:
+    #   context: .
+    #   args:
+    #     NODE_IMAGE: public.ecr.aws/docker/library/node:20-alpine
+    #     PYTHON_IMAGE: public.ecr.aws/docker/library/python:3.12-slim
+    image: z11_console:latest
+    container_name: z11_Console
+    restart: unless-stopped
+
+    # 端口映射：左侧为宿主机端口，改 .env 里的 HOME_CONSOLE_PORT 即可
+    ports:
+      - "${HOME_CONSOLE_PORT:-8765}:8765"
+
+    environment:
+      # 令牌加密密钥（Fernet）。留空则在数据目录自动生成 secret.key。
+      HOME_CONSOLE_SECRET: "${HOME_CONSOLE_SECRET:-}"
+      # Cookie SameSite 策略：Strict（默认）/ Lax / None。
+      # 被 HA 等跨站 iframe 嵌入时需设为 None（且必须 HTTPS，见下方 COOKIE_SECURE）。
+      HOME_CONSOLE_COOKIE_SAMESITE: "${HOME_CONSOLE_COOKIE_SAMESITE:-Strict}"
+      # 强制 Cookie Secure（HTTPS only）。SameSite=None 时会自动开启。
+      HOME_CONSOLE_COOKIE_SECURE: "${HOME_CONSOLE_COOKIE_SECURE:-}"
+      # 和风天气（可选，通常在设置页填写更安全）
+      QWEATHER_API_KEY: "${QWEATHER_API_KEY:-}"
+      QWEATHER_API_HOST: "${QWEATHER_API_HOST:-}"
+      QWEATHER_GEO_HOST: "${QWEATHER_GEO_HOST:-}"
+
+    volumes:
+      # 数据目录映射到宿主机 ./data，便于备份与迁移
+      - ./data:/app/server/data
