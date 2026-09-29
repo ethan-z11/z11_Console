@@ -4,13 +4,17 @@
 
 ## 安装（Docker，推荐）
 
-需要已安装 Docker 与 Docker Compose。
+镜像由 GitHub Actions 自动构建并推送到 ghcr.io，服务器上只需 `docker-compose.yml` 和 `.env` 两个文件（可直接从本目录复制，或用下面命令下载；仓库为私有时 curl 需带 token，直接复制更简单）：
 
 ```bash
-git clone https://github.com/<你的用户名>/z11_Console.git
-cd z11_Console
-cp .env.example .env   # 按需修改端口等配置
-docker compose up -d --build
+mkdir z11_Console && cd z11_Console
+# 下载 compose 与配置模板（仓库公开时可用）
+curl -O https://raw.githubusercontent.com/ethan-z11/z11_Console/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/ethan-z11/z11_Console/main/.env.example
+# 私有镜像需先登录（Personal Access Token 勾选 read:packages）：
+#   echo <TOKEN> | docker login ghcr.io -u ethan-z11 --password-stdin
+docker compose pull
+docker compose up -d
 ```
 
 启动后访问 `http://<主机>:8765`。
@@ -22,7 +26,17 @@ docker compose up -d --build
 ## 更新
 
 ```bash
-git pull
+docker compose pull
+docker compose up -d
+```
+
+## 从源码构建
+
+```bash
+git clone https://github.com/ethan-z11/z11_Console.git
+cd z11_Console
+cp .env.example .env
+# 编辑 docker-compose.yml：image 一行替换为 build: .（文件内有注释说明）
 docker compose up -d --build
 ```
 

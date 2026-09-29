@@ -1,15 +1,20 @@
 services:
   z11_console:
-    build: .
-    # 若服务器拉取 docker.io 基础镜像失败（镜像源失效），可改用 AWS ECR 公共镜像：
-    # build:
-    #   context: .
-    #   args:
-    #     NODE_IMAGE: public.ecr.aws/docker/library/node:20-alpine
-    #     PYTHON_IMAGE: public.ecr.aws/docker/library/python:3.12-slim
-    image: z11_console:latest
+    # 镜像由 GitHub Actions 自动构建并推送到 ghcr.io，服务器上直接拉取：
+    #   docker compose pull && docker compose up -d
+    image: ghcr.io/ethan-z11/z11_console:latest
     container_name: z11_Console
     restart: unless-stopped
+
+    # 如需在服务器本地构建（不用 ghcr 镜像），把上面 image 一行替换为：
+    #   build: .
+    #   image: z11_console:latest
+    # 若服务器拉取 docker.io 基础镜像失败，可给 build 加 args：
+    #   build:
+    #     context: .
+    #     args:
+    #       NODE_IMAGE: public.ecr.aws/docker/library/node:20-alpine
+    #       PYTHON_IMAGE: public.ecr.aws/docker/library/python:3.12-slim
 
     # 端口映射：左侧为宿主机端口，改 .env 里的 HOME_CONSOLE_PORT 即可
     ports:
