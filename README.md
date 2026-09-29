@@ -1,6 +1,6 @@
 # z11_Console
 
-家庭智能控制台：Vite + React + TypeScript 前端，Python (aiohttp) 后端，可连接 Home Assistant 自动发现房间与设备，支持灯光 / 空调 / 地暖 / 播放器控制、传感器状态摘要、天气、自动化开关、布局拖拽编辑等。
+家庭智能控制台：可连接 Home Assistant 自动发现房间与设备。
 
 ## 安装（Docker，推荐）
 
@@ -65,3 +65,5 @@ uv run python -m home_console_server
 
 - **构建时拉取基础镜像失败**：部分网络环境无法访问 docker.io，可改用 AWS ECR 公共镜像，见 `docker-compose.yml` 中的注释。
 - **被 Home Assistant 以 iframe 嵌入**：跨站时需要 HTTPS 并把 `.env` 中 `HOME_CONSOLE_COOKIE_SAMESITE` 设为 `None`。
+
+# AI全程制作，作者仅指导AII。
