@@ -81,8 +81,8 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
           {speedRange()}
           {(canOscillate || presets.length > 0) && (
             <div className="fan-card__control-row">
-              {canOscillate && oscillateButton}
               {presetButtons}
+              {canOscillate && oscillateButton}
             </div>
           )}
         </div>
@@ -93,7 +93,6 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
     {compact && detailOpen && createPortal(<dialog ref={detailRef} id={detailId} className="light-detail-dialog" aria-labelledby={`${detailId}-title`} onClose={() => { setDetailOpen(false); releasePointerFocus(); }} onCancel={() => setDetailOpen(false)}>
       <div className="light-detail-dialog__heading"><div><small>{room.name}</small><h2 id={`${detailId}-title`}>{fan.name}</h2></div><button type="button" onClick={() => setDetailOpen(false)} autoFocus aria-label="关闭风扇设置"><X size={20} /></button></div>
       <div className="fan-card__dialog-control">
-        <button type="button" className="fan-card__dialog-power" onClick={() => onToggle(fan.id)} aria-pressed={fan.on}>{fan.on ? '关闭' : '打开'}</button>
         {adjustable && <div className="light-detail-dialog__control"><div><label htmlFor={`${detailId}-speed`}>风速</label><output>{percentage}%</output></div>
           {speedRange(`${detailId}-speed`)}
         </div>}

@@ -458,7 +458,6 @@ strong { font-weight: 600; }
 .fan-card__preset[aria-pressed="true"] { border-color: transparent; background: color-mix(in srgb, var(--glow) 26%, var(--surface-2)); color: var(--glow); font-weight: 600; }
 .fan-card__preset:disabled { opacity: .45; cursor: not-allowed; }
 .fan-card__dialog-control { display: grid; gap: 18px; }
-.fan-card__dialog-power { height: 46px; border: 0; border-radius: 14px; background: var(--glow); color: #102436; font-size: 15px; font-weight: 650; }
 .fan-card__dialog-presets { display: grid; gap: 10px; }
 .fan-card__dialog-presets > span { color: var(--text-3); font-size: 13px; }
 
