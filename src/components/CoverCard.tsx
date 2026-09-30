@@ -39,6 +39,10 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
             ? '已关闭'
             : '状态未知';
   const rangeStyle = { '--range-progress': `${position}%` } as CSSProperties;
+  // 打开按钮只在完全打开（100%）时禁用；没有位置反馈的设备退回按状态判断。
+  const openDisabled = disabled || (cover.position !== undefined ? position >= 100 : cover.state === 'open');
+  // 关闭按钮只在完全关闭（0%）时禁用。
+  const closeDisabled = disabled || (cover.position !== undefined ? position <= 0 : cover.state === 'closed');
   const label = `${room.name}${cover.name}`;
   const detailId = useId();
   const detailRef = useRef<HTMLDialogElement>(null);
@@ -52,9 +56,9 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
 
   const wideButtons = (
     <div className="cover-card__buttons">
-      <button type="button" className="cover-card__button" onClick={() => onOpen(cover.id)} disabled={disabled || cover.state === 'open' || cover.state === 'opening'} aria-label={`打开${label}`}><ArrowUpFromLine size={17} /><span>打开</span></button>
-      {cover.supportsStop && <button type="button" className="cover-card__button" onClick={() => onStop(cover.id)} disabled={disabled || !moving} aria-label={`停止${label}`}><CircleStop size={17} /><span>停止</span></button>}
-      <button type="button" className="cover-card__button" onClick={() => onClose(cover.id)} disabled={disabled || cover.state === 'closed' || cover.state === 'closing'} aria-label={`关闭${label}`}><ArrowDownToLine size={17} /><span>关闭</span></button>
+      <button type="button" className="cover-card__button" onClick={() => onOpen(cover.id)} disabled={openDisabled} aria-label={`打开${label}`}><ArrowUpFromLine size={17} /><span>打开</span></button>
+      {cover.supportsStop && <button type="button" className="cover-card__button" onClick={() => onStop(cover.id)} disabled={disabled} aria-label={`停止${label}`}><CircleStop size={17} /><span>停止</span></button>}
+      <button type="button" className="cover-card__button" onClick={() => onClose(cover.id)} disabled={closeDisabled} aria-label={`关闭${label}`}><ArrowDownToLine size={17} /><span>关闭</span></button>
     </div>
   );
 
@@ -86,9 +90,9 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
           <div className="cover-card__compact-bottom">
             <div className="light-card__identity"><span className="tile__name">{cover.name}</span><span className="tile__note">{status}</span></div>
             <div className="cover-card__icon-buttons">
-              <button type="button" className="cover-card__icon-button" onClick={() => onOpen(cover.id)} disabled={disabled || cover.state === 'open' || cover.state === 'opening'} aria-label={`打开${label}`}><ArrowUpFromLine size={16} /></button>
-              {cover.supportsStop && <button type="button" className="cover-card__icon-button" onClick={() => onStop(cover.id)} disabled={disabled || !moving} aria-label={`停止${label}`}><CircleStop size={16} /></button>}
-              <button type="button" className="cover-card__icon-button" onClick={() => onClose(cover.id)} disabled={disabled || cover.state === 'closed' || cover.state === 'closing'} aria-label={`关闭${label}`}><ArrowDownToLine size={16} /></button>
+              <button type="button" className="cover-card__icon-button" onClick={() => onOpen(cover.id)} disabled={openDisabled} aria-label={`打开${label}`}><ArrowUpFromLine size={16} /></button>
+              {cover.supportsStop && <button type="button" className="cover-card__icon-button" onClick={() => onStop(cover.id)} disabled={disabled} aria-label={`停止${label}`}><CircleStop size={16} /></button>}
+              <button type="button" className="cover-card__icon-button" onClick={() => onClose(cover.id)} disabled={closeDisabled} aria-label={`关闭${label}`}><ArrowDownToLine size={16} /></button>
             </div>
           </div>
         </>
@@ -98,9 +102,9 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
       <div className="light-detail-dialog__heading"><div><small>{room.name}</small><h2 id={`${detailId}-title`}>{cover.name}</h2></div><button type="button" onClick={() => setDetailOpen(false)} autoFocus aria-label="关闭窗帘控制"><X size={20} /></button></div>
       {cover.supportsPosition && <div className="light-detail-dialog__control"><div><label htmlFor={`${detailId}-position`}>开合位置</label><output>{position}%</output></div><input id={`${detailId}-position`} type="range" min="0" max="100" value={position} style={rangeStyle} onChange={(event) => onPosition(cover.id, Number(event.target.value))} disabled={!cover.available} /></div>}
       <div className="cover-card__buttons cover-card__buttons--dialog">
-        <button type="button" className="cover-card__button" onClick={() => onOpen(cover.id)} disabled={!cover.available || cover.state === 'open' || cover.state === 'opening'} aria-label={`打开${label}`}><ArrowUpFromLine size={17} /><span>打开</span></button>
-        {cover.supportsStop && <button type="button" className="cover-card__button" onClick={() => onStop(cover.id)} disabled={!cover.available || !moving} aria-label={`停止${label}`}><CircleStop size={17} /><span>停止</span></button>}
-        <button type="button" className="cover-card__button" onClick={() => onClose(cover.id)} disabled={!cover.available || cover.state === 'closed' || cover.state === 'closing'} aria-label={`关闭${label}`}><ArrowDownToLine size={17} /><span>关闭</span></button>
+        <button type="button" className="cover-card__button" onClick={() => onOpen(cover.id)} disabled={!cover.available || (cover.position !== undefined ? position >= 100 : cover.state === 'open')} aria-label={`打开${label}`}><ArrowUpFromLine size={17} /><span>打开</span></button>
+        {cover.supportsStop && <button type="button" className="cover-card__button" onClick={() => onStop(cover.id)} disabled={!cover.available} aria-label={`停止${label}`}><CircleStop size={17} /><span>停止</span></button>}
+        <button type="button" className="cover-card__button" onClick={() => onClose(cover.id)} disabled={!cover.available || (cover.position !== undefined ? position <= 0 : cover.state === 'closed')} aria-label={`关闭${label}`}><ArrowDownToLine size={17} /><span>关闭</span></button>
       </div>
     </dialog>, document.body)}
     </>
