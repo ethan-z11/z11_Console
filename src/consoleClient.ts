@@ -31,6 +31,8 @@ export interface CatalogueEntity {
   precision?: number;
   /** 扫地机关联的地图 image 实体 id（后端发现，仅 vacuum 域）。 */
   mapEntityId?: string;
+  /** HA 实时状态是否可用；unavailable 的实体不允许加入房间（缺省按可用处理，兼容演示模式）。 */
+  available?: boolean;
 }
 
 export interface Catalogue {

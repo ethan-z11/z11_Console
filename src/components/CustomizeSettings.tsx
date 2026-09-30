@@ -39,7 +39,9 @@ const newId = (prefix: string) => `${prefix}${Date.now().toString(36)}${Math.ran
 
 /** 可加入房间的设备类实体；人员与农历是全局信息，一键执行类实体只属于情景按钮。 */
 function isRoomDevice(entity: CatalogueEntity): boolean {
-  if (entity.domain === 'light' || entity.domain === 'climate' || entity.domain === 'media_player' || entity.domain === 'fan' || entity.domain === 'cover' || entity.domain === 'vacuum' || entity.domain === 'switch') return true;
+  // 规则：unavailable 的实体不能进入可选范围（已在房间里的设备仍以离线卡片显示，不在这里移除）。
+  if (entity.available === false) return false;
+  if (entity.domain === 'light' || entity.domain === 'climate' || entity.domain === 'media_player' || entity.domain === 'fan' || entity.domain === 'cover' || entity.domain === 'vacuum' || entity.domain === 'switch' || entity.domain === 'input_boolean') return true;
   if (entity.domain === 'binary_sensor') return Boolean(entity.deviceClass);
   if (entity.domain === 'sensor') return entity.deviceClass === 'temperature' || entity.deviceClass === 'humidity' || entity.deviceClass === 'battery';
   return false;

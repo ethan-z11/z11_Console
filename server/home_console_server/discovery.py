@@ -22,7 +22,7 @@ BINARY_CLASSES = {
     "moisture",
     "smoke", "gas", "carbon_monoxide",
 }
-CONTROL_DOMAINS = {"light", "climate", "media_player", "fan", "cover", "vacuum", "switch"}
+CONTROL_DOMAINS = {"light", "climate", "media_player", "fan", "cover", "vacuum", "switch", "input_boolean"}
 # 情景模式按钮可指向的“一键执行”类实体域：
 # scene / script 用 turn_on，button / input_button 用 press，automation 用 trigger。
 SCENE_DOMAINS = {"scene", "script", "button", "input_button", "automation"}
@@ -142,6 +142,8 @@ def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], 
             "areaId": area_id,
             "name": display_name(friendly, area_names.get(area_id)),
             "labels": entity_labels,
+            # 规则：unavailable 的实体不进入“可加入房间”的可选范围（已在房间里的仍以离线卡显示）。
+            "available": state.get("state") != "unavailable",
         }
         if domain == "vacuum" and (map_image := find_map_image(entity_id, entry, images)):
             entity["mapEntityId"] = map_image

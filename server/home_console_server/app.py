@@ -127,6 +127,11 @@ ALLOWED_SERVICES: dict[str, dict[str, dict[str, Callable[[Any], bool]]]] = {
         "turn_on": {},
         "turn_off": {},
     },
+    # HA 助手类布尔开关（input_boolean）：服务与普通开关相同，卡片也按开关显示。
+    "input_boolean": {
+        "turn_on": {},
+        "turn_off": {},
+    },
     # 情景模式按钮：一键执行类实体，只允许无参数调用，且目标必须是设置中已配置的实体。
     "scene": {"turn_on": {}},
     "script": {"turn_on": {}},
