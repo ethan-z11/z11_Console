@@ -447,6 +447,9 @@ strong { font-weight: 600; }
 .fan-card__range input[type="range"]::-moz-range-track { background: linear-gradient(90deg, #4d8ec2, #9ed3f4 var(--range-progress), var(--overlay-2) var(--range-progress)); }
 .fan-card__presets { display: flex; flex-wrap: wrap; gap: 8px; }
 .fan-card__control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fan-card__control-row > .fan-card__preset,
+.fan-card__control-row > .fan-card__oscillate { flex: 1 1 0; min-width: 72px; justify-content: center; white-space: nowrap; }
+.fan-card__control-row > .fan-card__preset { display: inline-flex; align-items: center; }
 .fan-card__oscillate { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 13px; border: 1px solid var(--hairline-strong); border-radius: 999px; background: var(--surface-2); color: var(--text-2); font-size: 12px; transition: border-color .18s, background-color .18s, color .18s; }
 .fan-card__oscillate:hover:not(:disabled) { border-color: var(--glow); color: var(--text); }
 .fan-card__oscillate[aria-pressed="true"] { border-color: transparent; background: color-mix(in srgb, var(--glow) 26%, var(--surface-2)); color: var(--glow); font-weight: 600; }

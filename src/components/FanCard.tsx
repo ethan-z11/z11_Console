@@ -28,6 +28,8 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
   // 默认小卡：可调速或可摇头的风扇在小卡时点齿轮打开详情弹窗控制。
   const compact = (adjustable || canOscillate) && size === '1x1';
   const disabled = !fan.available || Boolean(editing);
+  // 关机后风类 / 摇头按钮不可用，也不再显示高亮态。
+  const controlsDisabled = disabled || !fan.on;
   const presets = fan.presetModes ?? [];
   const percentage = fan.percentage ?? 0;
   const status = !fan.available
@@ -56,16 +58,15 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
       type="button"
       className={`fan-card__oscillate${fan.oscillating ? ' fan-card__oscillate--on' : ''}`}
       onClick={() => onOscillate(fan.id, !fan.oscillating)}
-      disabled={disabled}
+      disabled={controlsDisabled}
       aria-pressed={fan.oscillating}
     >
       <RotateCw size={15} className={fan.oscillating ? 'fan-card__oscillate-icon' : undefined} aria-hidden="true" />摇头
     </button>;
 
+  // 大卡下与摇头按钮同排均分行宽；弹窗中再用 .fan-card__presets 容器包起来。
   const presetButtons = presets.length > 0
-    ? <div className="fan-card__presets">
-        {presets.map((preset) => <button key={preset} type="button" className="fan-card__preset" onClick={() => onPreset(fan.id, preset)} disabled={disabled} aria-pressed={fan.presetMode === preset}>{preset}</button>)}
-      </div>
+    ? presets.map((preset) => <button key={preset} type="button" className="fan-card__preset" onClick={() => onPreset(fan.id, preset)} disabled={controlsDisabled} aria-pressed={fan.presetMode === preset}>{preset}</button>)
     : null;
 
   return (
@@ -97,7 +98,7 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
           {speedRange(`${detailId}-speed`)}
         </div>}
         {canOscillate && <div className="fan-card__dialog-presets"><span>摇头</span>{oscillateButton}</div>}
-        {presetButtons && <div className="fan-card__dialog-presets"><span>风类</span>{presetButtons}</div>}
+        {presetButtons && <div className="fan-card__dialog-presets"><span>风类</span><div className="fan-card__presets">{presetButtons}</div></div>}
       </div>
     </dialog>, document.body)}
     </>
