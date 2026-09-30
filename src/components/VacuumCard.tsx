@@ -65,7 +65,7 @@ export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, o
       </span>
     : null;
 
-  const mapImage = (dialog = false) => vacuum.mapEntity
+  const mapImage = () => vacuum.mapEntity
     ? <img className="vacuum-card__map-img" src={`/api/ha-image?entity=${encodeURIComponent(vacuum.mapEntity)}&v=${tick}`} alt={`${room.name}${vacuum.name}清扫地图`} draggable={false} />
     : <div className="vacuum-card__map-img vacuum-card__map-empty"><DeviceIcon size={26} /><span>暂无地图</span></div>;
 
@@ -111,7 +111,7 @@ export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, o
       <div className="light-detail-dialog__heading"><div><small>{room.name}</small><h2 id={`${detailId}-title`}>{vacuum.name}</h2></div><button type="button" onClick={() => setDetailOpen(false)} autoFocus aria-label="关闭扫地机设置"><X size={20} /></button></div>
       <div className="vacuum-card__dialog">
         <div className="vacuum-card__map vacuum-card__map--dialog">
-          {mapImage(true)}
+            {mapImage()}
           <div className="vacuum-card__map-overlay"><span>{statusText}</span>{vacuum.battery !== undefined && <span>{vacuum.battery}%</span>}</div>
         </div>
         {fanSpeeds}
