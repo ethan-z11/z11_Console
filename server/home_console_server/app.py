@@ -995,7 +995,12 @@ class ConsoleServer:
         session = self._require_admin(request)
         body = await read_json(request)
         known_entities = {entity["id"] for entity in self.discovered["entities"]}
-        custom = clean_custom(body, known_entities=known_entities)
+        # 温湿度来源只允许选择目录中实体实际提供的指标参数（metric:key）。
+        known_metrics = {
+            entity["id"]: {f"{option['metric']}:{option['key']}" for option in entity.get("metrics", [])}
+            for entity in self.discovered["entities"] if entity.get("metrics")
+        }
+        custom = clean_custom(body, known_entities=known_entities, known_metrics=known_metrics)
         self.store.save_custom(custom)
         # 摄像头配置可能增删改：ONVIF 探测缓存作废，并按新列表启停运动监测。
         self.onvif.invalidate()

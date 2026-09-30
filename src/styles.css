@@ -1184,6 +1184,15 @@ html, body { overscroll-behavior-y: none; }
 .room-manage-row__name em { color: var(--text-3); font-size: 12px; font-style: normal; white-space: nowrap; }
 .room-manage-row__actions { display: flex; align-items: center; gap: 4px; flex: none; }
 
+/* ---------- 设置 → 温湿度来源 ---------- */
+.metric-source-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.metric-source-scope { display: grid; gap: 6px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--bg); }
+.metric-source-scope > strong { font-size: 14px; font-weight: 600; }
+.metric-source-row { display: flex; align-items: center; gap: 8px; }
+.metric-source-row__label { display: inline-flex; align-items: center; gap: 5px; flex: none; width: 52px; color: var(--text-2); font-size: 13px; }
+.metric-source-row select { flex: 1 1 0; min-width: 0; padding: 7px 9px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--panel); color: var(--text-1); font-size: 13px; }
+.metric-source-row .icon-button { flex: none; }
+
 /* ---------- 设置 → 房间：情景按钮管理 ---------- */
 .scene-edit-list { display: grid; gap: 14px; margin-bottom: 4px; }
 .scope-group h4 { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 8px; font-size: 13.5px; font-weight: 600; }
@@ -1242,6 +1251,8 @@ html, body { overscroll-behavior-y: none; }
   .scene-button { flex: 1 1 auto; justify-content: center; }
   .scene-manage-row { flex-wrap: wrap; row-gap: 6px; }
   .scene-manage-row code { flex: 1 1 100%; order: 3; padding-left: 25px; }
+  .metric-source-row { flex-wrap: wrap; }
+  .metric-source-row select { flex: 1 1 140px; }
 }
 
 /* ---------- 安装为应用（PWA）：iOS 状态栏透明、内容延伸到顶部与刘海两侧 ---------- */

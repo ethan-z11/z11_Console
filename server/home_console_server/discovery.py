@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 SENSOR_CLASSES = {"temperature", "humidity", "battery"}
@@ -73,6 +74,59 @@ def display_precision(entry: dict[str, Any]) -> int | None:
         if isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 6:
             return value
     return None
+
+
+METRIC_LABELS = {
+    "state": "状态值",
+    "current_temperature": "当前温度",
+    "current_humidity": "当前湿度",
+    "temperature": "温度",
+    "humidity": "湿度",
+}
+METRIC_KEY_RE = re.compile(r"^[A-Za-z0-9_]{1,48}$")
+
+
+def _metric_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def metric_options(domain: str, device_class: Any, raw_state: Any, attributes: dict[str, Any]) -> list[dict[str, str]]:
+    """找出实体上可作为房间温度 / 湿度显示的数值参数，供设置页“温湿度来源”选择。
+
+    - 温湿度 sensor：自身状态值；
+    - climate：current_temperature / current_humidity 属性（如小米空调实体自带温湿度）；
+    - 任意实体：其它名字含 temperature / humidity 的数值属性也列出，由用户手动指定。
+    """
+    options: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
+    def add(key: str, metric: str) -> None:
+        if not METRIC_KEY_RE.fullmatch(key) or (metric, key) in seen:
+            return
+        seen.add((metric, key))
+        options.append({"key": key, "metric": metric, "label": METRIC_LABELS.get(key, key)})
+
+    if domain == "sensor" and device_class in ("temperature", "humidity"):
+        try:
+            float(str(raw_state))
+        except (TypeError, ValueError):
+            pass
+        else:
+            add("state", str(device_class))
+    if domain == "climate":
+        if _metric_number(attributes.get("current_temperature")):
+            add("current_temperature", "temperature")
+        if _metric_number(attributes.get("current_humidity")):
+            add("current_humidity", "humidity")
+    for key, value in attributes.items():
+        if not isinstance(key, str) or key.startswith("_") or not _metric_number(value):
+            continue
+        lowered = key.lower()
+        if "temperature" in lowered:
+            add(key, "temperature")
+        elif "humidity" in lowered:
+            add(key, "humidity")
+    return options
 
 
 def find_map_image(vacuum_id: str, vacuum_entry: dict[str, Any], images: list[dict[str, Any]]) -> str | None:
@@ -147,6 +201,8 @@ def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], 
         }
         if domain == "vacuum" and (map_image := find_map_image(entity_id, entry, images)):
             entity["mapEntityId"] = map_image
+        if not lunar and (metrics := metric_options(domain, device_class, state.get("state"), attributes)):
+            entity["metrics"] = metrics
         if not lunar and domain == "sensor" and (precision := display_precision(entry)) is not None:
             entity["precision"] = precision
         entities.append(entity)

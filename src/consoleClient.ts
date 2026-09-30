@@ -31,8 +31,21 @@ export interface CatalogueEntity {
   precision?: number;
   /** 扫地机关联的地图 image 实体 id（后端发现，仅 vacuum 域）。 */
   mapEntityId?: string;
+  /** 该实体可作为房间温度 / 湿度显示的数值参数（climate 的 current_temperature 等）；没有时不允许选为来源。 */
+  metrics?: MetricOption[];
   /** HA 实时状态是否可用；unavailable 的实体不允许加入房间（缺省按可用处理，兼容演示模式）。 */
   available?: boolean;
+}
+
+export type MetricName = 'temperature' | 'humidity';
+
+/** 实体上可供“温湿度来源”选择的一个数值参数。 */
+export interface MetricOption {
+  /** 取值位置：'state' 为实体状态值，其余为 attributes 中的属性键。 */
+  key: string;
+  metric: MetricName;
+  /** 设置页下拉显示名，如“当前温度”。 */
+  label: string;
 }
 
 export interface Catalogue {
@@ -53,6 +66,17 @@ export interface CustomConfig {
   entities: Record<string, { name: string; icon: string }>;
   /** 自定义摄像头；scope 为 'home'（我的家庭页）或某个房间 id。 */
   cameras: CameraConfig[];
+  /** 房间 / 主页的温湿度来源：每个 scope+metric 最多一条，手动指定实体与其数值参数，同槽位新增自动替代。 */
+  metricSources?: MetricSource[];
+}
+
+/** 温湿度显示来源：scope 为 'home'（主页）或房间 id；attribute 为 'state' 或实体属性键。 */
+export interface MetricSource {
+  id: string;
+  scope: string;
+  metric: MetricName;
+  entity: string;
+  attribute: string;
 }
 
 /** 摄像头接入方式：rtsp 直填地址；onvif 填主机 / 端口 / 账密，取流地址由后端探测。 */

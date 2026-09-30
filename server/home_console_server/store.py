@@ -83,6 +83,10 @@ CUSTOM_ENTITY_NAME_MAX = 24
 CUSTOM_CAMERA_MAX = 24
 CUSTOM_CAMERA_NAME_MAX = 12
 CUSTOM_CAMERA_URL_MAX = 300
+# 房间温湿度来源（手动指定实体及其数值参数）：主页 + 每个房间各有温度 / 湿度两条。
+CUSTOM_METRIC_SOURCE_MAX = 100
+METRIC_ATTR_RE = re.compile(r"^[A-Za-z0-9_]{1,48}$")
+METRIC_NAMES = ("temperature", "humidity")
 RTSP_URL_RE = re.compile(r"^rtsp://\S+$", re.IGNORECASE)
 # ONVIF 摄像头：主机（IP 或域名）、端口、登录账号密码；不存整 URL，取流时由后端组装。
 CUSTOM_CAMERA_HOST_MAX = 128
@@ -98,7 +102,8 @@ SCENE_TARGET_DOMAINS = ("scene", "script", "button", "input_button", "automation
 HOME_SCOPE = "home"
 
 
-def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: set[str] | None = None) -> dict[str, Any]:
+def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: set[str] | None = None,
+                 known_metrics: dict[str, set[str]] | None = None) -> dict[str, Any]:
     """校验手动房间、设备归属和情景按钮。
 
     保存时以当前发现结果为准：归属房间必须存在、实体必须已发现；未知的条目直接丢弃。
@@ -225,7 +230,36 @@ def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: 
         if entry is not None:
             camera_ids.add(camera_id)
             cameras.append(entry)
-    return {"rooms": rooms, "assignments": assignments, "scenes": scenes, "entities": entities, "cameras": cameras}
+
+    # 温湿度来源：每个作用域（主页 home 或某个房间）的每个指标最多一条；新增同槽位条目自动替代旧条目。
+    # attribute 为 "state"（实体状态值）或实体属性键（如 climate 的 current_temperature / current_humidity）。
+    metric_in = raw.get("metricSources") if isinstance(raw.get("metricSources"), list) else []
+    metric_sources: list[dict[str, str]] = []
+    metric_slots: set[tuple[str, str]] = set()
+    for item in metric_in[:CUSTOM_METRIC_SOURCE_MAX]:
+        if not isinstance(item, dict):
+            continue
+        source_id = item.get("id")
+        scope, metric, entity_id, attribute = item.get("scope"), item.get("metric"), item.get("entity"), item.get("attribute")
+        if not isinstance(source_id, str) or not ROOM_ID_RE.fullmatch(source_id) or source_id in {s["id"] for s in metric_sources}:
+            continue
+        if not isinstance(scope, str) or not (scope == HOME_SCOPE or scope in valid_rooms):
+            continue
+        if metric not in METRIC_NAMES or (scope, metric) in metric_slots:
+            continue
+        if not isinstance(entity_id, str) or not ENTITY_ID_RE.fullmatch(entity_id):
+            continue
+        if known_entities is not None and entity_id not in known_entities:
+            continue
+        if not isinstance(attribute, str) or not METRIC_ATTR_RE.fullmatch(attribute):
+            continue
+        if known_metrics is not None and f"{metric}:{attribute}" not in known_metrics.get(entity_id, set()):
+            continue
+        metric_slots.add((scope, metric))
+        metric_sources.append({"id": source_id, "scope": scope, "metric": metric, "entity": entity_id, "attribute": attribute})
+
+    return {"rooms": rooms, "assignments": assignments, "scenes": scenes, "entities": entities,
+            "cameras": cameras, "metricSources": metric_sources}
 
 
 def id_list(value: Any) -> list[str] | None:

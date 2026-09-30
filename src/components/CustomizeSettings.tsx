@@ -1,9 +1,9 @@
-import { ArrowDown, ArrowUp, Cctv, DoorOpen, House, Pencil, Plus, Search, Sparkles, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Cctv, DoorOpen, Droplets, House, Pencil, Plus, Search, Sparkles, Thermometer, Trash2, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { ApiError, getCustom, getEntities, putCustom } from '../consoleApi';
 import type { DiscoveredEntities } from '../consoleApi';
-import type { CameraType, CatalogueEntity, CustomConfig, LabelInfo } from '../consoleClient';
+import type { CameraType, CatalogueEntity, CustomConfig, LabelInfo, MetricName } from '../consoleClient';
 import { cameraType } from '../consoleClient';
 import { entityKindLabel, isSceneTarget, sceneDisplayName } from '../haAdapter';
 import { findAnyIcon, findSceneIcon, DEVICE_ICONS, PHU_ICONS, ROOM_ICONS, SCENE_ICONS } from '../icons';
@@ -48,6 +48,41 @@ function isRoomDevice(entity: CatalogueEntity): boolean {
 }
 
 const validManualTarget = (id: string) => /^(scene|script|button|input_button|automation)\.[A-Za-z0-9_]{1,64}$/.test(id.trim());
+
+const METRIC_ROWS: { metric: MetricName; label: string }[] = [
+  { metric: 'temperature', label: '温度' },
+  { metric: 'humidity', label: '湿度' },
+];
+
+/** 温湿度来源的一行：选择实体 → 选择该实体上的取值参数；可清除。房间行与主页行共用。 */
+function MetricSourceRow({ metric, label, icon, source, candidates, onSave, onAttribute, onClear }: {
+  metric: MetricName;
+  label: string;
+  icon: ReactNode;
+  source?: { entity: string; attribute: string };
+  candidates: CatalogueEntity[];
+  onSave: (entityId: string) => void;
+  onAttribute: (attribute: string) => void;
+  onClear: () => void;
+}) {
+  const selected = source ? candidates.find((entity) => entity.id === source.entity) : undefined;
+  const options = selected?.metrics?.filter((item) => item.metric === metric) ?? [];
+  const attributeKnown = options.some((item) => item.key === source?.attribute);
+  return (
+    <div className="metric-source-row">
+      <span className="metric-source-row__label">{icon}{label}</span>
+      <select value={source?.entity ?? ''} onChange={(event) => event.target.value && onSave(event.target.value)} aria-label={`选择${label}来源实体`}>
+        <option value="">不显示</option>
+        {candidates.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}（{entity.id}）</option>)}
+      </select>
+      <select value={source?.attribute ?? ''} onChange={(event) => event.target.value && onAttribute(event.target.value)} disabled={!source || options.length < 2} aria-label={`选择${label}取值参数`}>
+        {source && !attributeKnown && <option value={source.attribute}>{source.attribute}（已失效，请重选）</option>}
+        {options.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
+      </select>
+      {source && <button type="button" className="icon-button" onClick={onClear} aria-label={`删除${label}来源`}><Trash2 size={16} /></button>}
+    </div>
+  );
+}
 
 /** 图标选择弹窗状态：给房间、新建情景共用；编辑情景的图标弹窗在其组件内部自持。 */
 type IconPickerState =
@@ -245,6 +280,31 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
     void mutate({ ...custom, cameras: custom.cameras.filter((camera) => camera.id !== cameraId) }, '摄像头已删除');
   }
 
+  /** 保存某作用域（主页 / 房间）某指标的温湿度来源；同槽位再次保存即自动替代原条目。 */
+  function saveMetricSource(scope: string, metric: MetricName, entityId: string) {
+    if (!custom || !data) return;
+    const entity = data.entities.find((item) => item.id === entityId);
+    const option = entity?.metrics?.find((item) => item.metric === metric);
+    if (!entity || !option) return;
+    const existing = custom.metricSources?.find((item) => item.scope === scope && item.metric === metric);
+    const others = (custom.metricSources ?? []).filter((item) => !(item.scope === scope && item.metric === metric));
+    const next = [...others, { id: existing?.id ?? newId('m'), scope, metric, entity: entityId, attribute: option.key }];
+    void mutate({ ...custom, metricSources: next }, metric === 'temperature' ? '温度来源已保存' : '湿度来源已保存');
+  }
+
+  /** 更换已选实体上的取值参数（同一实体提供多个同类数值参数时）。 */
+  function changeMetricAttribute(scope: string, metric: MetricName, attribute: string) {
+    if (!custom) return;
+    const metricSources = (custom.metricSources ?? []).map((item) => item.scope === scope && item.metric === metric ? { ...item, attribute } : item);
+    void mutate({ ...custom, metricSources }, '取值参数已更换');
+  }
+
+  function clearMetricSource(scope: string, metric: MetricName) {
+    if (!custom) return;
+    const metricSources = (custom.metricSources ?? []).filter((item) => !(item.scope === scope && item.metric === metric));
+    void mutate({ ...custom, metricSources }, metric === 'temperature' ? '温度来源已删除' : '湿度来源已删除');
+  }
+
   if (!connected) return <section className="settings-card"><p className="settings-message">连接 Home Assistant 后，可在这里手动创建房间、添加设备和设置情景模式按钮。</p></section>;
   if (!data || !custom) return <section className="settings-card"><p className="settings-message">{error ?? '正在读取房间配置与已发现的设备…'}</p></section>;
 
@@ -257,6 +317,12 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
     .filter((group) => group.members.length > 0);
   const unlabeledTargets = sceneTargets.filter((entity) => entity.labels.length === 0);
   const entityNameById = new Map(data.entities.map((entity) => [entity.id, entity.name]));
+  // 可作为温湿度来源的实体（在线且带对应数值参数）。
+  const metricCandidates: Record<MetricName, CatalogueEntity[]> = {
+    temperature: data.entities.filter((entity) => entity.available !== false && entity.metrics?.some((item) => item.metric === 'temperature')),
+    humidity: data.entities.filter((entity) => entity.available !== false && entity.metrics?.some((item) => item.metric === 'humidity')),
+  };
+  const metricSourceOf = (scope: string, metric: MetricName) => custom.metricSources?.find((item) => item.scope === scope && item.metric === metric);
   const editingScene = editingSceneId ? custom.scenes.find((scene) => scene.id === editingSceneId) ?? null : null;
   const iconPickerChoices: IconChoice[] | null = iconPicker ? (iconPicker.kind === 'room' ? ROOM_ICONS : SCENE_ICONS) : null;
   const iconPickerValue = iconPicker
@@ -304,6 +370,35 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
         )}
         {error && <p className="settings-message settings-message--error" role="alert">{error}</p>}
         {message && <p className="settings-message settings-message--good" role="status">{message}</p>}
+      </section>
+
+      <section className="settings-card">
+        <div className="settings-card__heading"><span className="tile__chip"><Thermometer size={20} /></span><div><h3>温湿度来源</h3></div></div>
+        <p className="settings-message">为每个位置手动选择提供温度 / 湿度的实体和参数（例如空调实体自带的 current_temperature、current_humidity，不必再依赖独立传感器）；指派到房间或主页。同一位置重新选择即自动替代原来源，也可随时删除。</p>
+        {metricCandidates.temperature.length + metricCandidates.humidity.length === 0
+          ? <p className="settings-message">当前没有发现带温度 / 湿度数值的在线实体（空调、温湿度传感器等）。</p>
+          : (
+            <ul className="metric-source-list">
+              {[{ id: 'home', name: '我的家庭（主页）' }, ...custom.rooms.map((room) => ({ id: room.id, name: room.name }))].map((scope) => (
+                <li key={scope.id} className="metric-source-scope">
+                  <strong>{scope.name}</strong>
+                  {METRIC_ROWS.map(({ metric, label }) => (
+                    <MetricSourceRow
+                      key={metric}
+                      metric={metric}
+                      label={label}
+                      icon={metric === 'temperature' ? <Thermometer size={14} /> : <Droplets size={14} />}
+                      source={metricSourceOf(scope.id, metric)}
+                      candidates={metricCandidates[metric]}
+                      onSave={(entityId) => saveMetricSource(scope.id, metric, entityId)}
+                      onAttribute={(attribute) => changeMetricAttribute(scope.id, metric, attribute)}
+                      onClear={() => clearMetricSource(scope.id, metric)}
+                    />
+                  ))}
+                </li>
+              ))}
+            </ul>
+          )}
       </section>
 
       <section className="settings-card">

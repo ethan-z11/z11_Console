@@ -1,5 +1,5 @@
 import type { DeviceCommand } from './deviceCommands';
-import type { Catalogue, CatalogueEntity, CustomConfig, EntityState } from './consoleClient';
+import type { Catalogue, CatalogueEntity, CustomConfig, EntityState, MetricName } from './consoleClient';
 import type { BatteryReading, ClimateDevice, CoverDevice, Device, FanDevice, HomeState, LightDevice, MediaDevice, Person, Room, SafetyDevice, SensorDevice, SwitchDevice, VacuumDevice } from './types';
 
 type States = Map<string, EntityState>;
@@ -148,6 +148,21 @@ function toSwitch(base: SwitchDevice, state: EntityState): SwitchDevice {
   return { ...base, available: true, on: state.state === 'on' };
 }
 
+const HOME_SCOPE = 'home';
+const METRIC_UNIT: Record<MetricName, string> = { temperature: '°C', humidity: '%' };
+
+/** 读取温湿度来源当前数值：state 状态值或指定属性，非有限数字返回 undefined（按不可用处理）。 */
+function readMetric(state: EntityState | undefined, attribute: string): number | undefined {
+  if (!usable(state)) return undefined;
+  const raw = attribute === 'state' ? state.state : state.attributes[attribute];
+  const value = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : NaN;
+  return Number.isFinite(value) ? value : undefined;
+}
+
+function formatMetric(metric: MetricName, value: number): string {
+  return metric === 'temperature' ? String(Number(value.toFixed(1))) : String(Math.round(value));
+}
+
 /** HA 没给显示精度时的兜底：温度最多 1 位小数，湿度取整。 */
 const fallbackPrecision: Record<SensorDevice['metric'], number> = { temperature: 1, humidity: 0 };
 
@@ -292,7 +307,7 @@ export function entityKindLabel(entity: Pick<CatalogueEntity, 'domain' | 'device
   }
 }
 
-const EMPTY_CUSTOM: CustomConfig = { rooms: [], assignments: {}, scenes: [], entities: {}, cameras: [] };
+const EMPTY_CUSTOM: CustomConfig = { rooms: [], assignments: {}, scenes: [], entities: {}, cameras: [], metricSources: [] };
 
 /**
  * 以后端发现并过滤后的目录为骨架，用 HA 实时状态生成页面数据。房间完全来自设置中的手动房间，
@@ -310,6 +325,48 @@ export function liveHome(catalogue: Catalogue | null, states: States, previous: 
   const batteries: BatteryReading[] = [];
   const people: Person[] = [];
 
+  // 手动指定的温湿度来源 → 合成只用于房间/主页状态摘要的传感器。
+  // 规则：每个作用域每个指标只认一条（设置里同槽位保存即替代）；来源不可用时自动改用同房间内可用的同类实体参数；
+  // 房间一旦配置了来源，该房间原来的同指标独立传感器就被替代、不再显示。
+  const replacedSensorIds = new Set<string>();
+  const metricSensors: SensorDevice[] = [];
+  for (const source of custom.metricSources ?? []) {
+    if (source.scope !== HOME_SCOPE && !roomIds.has(source.scope)) continue;
+    let entityId = source.entity;
+    let attribute = source.attribute;
+    let value = readMetric(states.get(entityId), attribute);
+    if (value === undefined && source.scope !== HOME_SCOPE) {
+      const fallback = entities.find((candidate) => {
+        if (custom.assignments[candidate.id] !== source.scope) return false;
+        const option = candidate.metrics?.find((item) => item.metric === source.metric);
+        return Boolean(option && readMetric(states.get(candidate.id), option.key) !== undefined);
+      });
+      if (fallback) {
+        entityId = fallback.id;
+        attribute = fallback.metrics!.find((item) => item.metric === source.metric)!.key;
+        value = readMetric(states.get(entityId), attribute);
+      }
+    }
+    if (source.scope !== HOME_SCOPE) {
+      for (const candidate of entities) {
+        if (custom.assignments[candidate.id] === source.scope && candidate.domain === 'sensor' && candidate.deviceClass === source.metric) {
+          replacedSensorIds.add(candidate.id);
+        }
+      }
+    }
+    metricSensors.push({
+      id: `$metric:${source.scope}:${source.metric}`,
+      roomId: source.scope,
+      name: source.metric === 'temperature' ? '温度' : '湿度',
+      available: value !== undefined,
+      kind: 'sensor',
+      value: value === undefined ? '' : formatMetric(source.metric, value),
+      unit: METRIC_UNIT[source.metric],
+      metric: source.metric,
+      precision: source.metric === 'temperature' ? 1 : 0,
+    });
+  }
+
   for (const entity of entities) {
     const state = states.get(entity.id);
     if (entity.domain === 'person') {
@@ -326,6 +383,8 @@ export function liveHome(catalogue: Catalogue | null, states: States, previous: 
       batteries.push({ id: entity.id, roomId, name: entity.name, available: usable(state), level: Number.isFinite(level) ? Math.round(level) : null });
       continue;
     }
+    // 已为该房间手动指定温湿度来源时，原来的同指标独立传感器被替代。
+    if (replacedSensorIds.has(entity.id)) continue;
     const base = baseDevice(entity, roomId, state);
     if (!base) continue;
     // 设置里可按实体改名 / 换图标，不影响 HA 本身。
@@ -338,6 +397,7 @@ export function liveHome(catalogue: Catalogue | null, states: States, previous: 
     if (!usable(state)) devices.push(prior && prior.kind === base.kind ? { ...prior, roomId, name: base.name, icon: base.icon, available: false } : base);
     else devices.push(toDevice(base, prior && prior.kind === base.kind ? prior : undefined, state));
   }
+  devices.push(...metricSensors);
   return { rooms, devices, batteries, people };
 }
 
