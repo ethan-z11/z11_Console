@@ -1,6 +1,6 @@
 import type { DeviceCommand } from './deviceCommands';
 import type { Catalogue, CatalogueEntity, CustomConfig, EntityState } from './consoleClient';
-import type { BatteryReading, ClimateDevice, CoverDevice, Device, FanDevice, HomeState, LightDevice, MediaDevice, Person, Room, SafetyDevice, SensorDevice } from './types';
+import type { BatteryReading, ClimateDevice, CoverDevice, Device, FanDevice, HomeState, LightDevice, MediaDevice, Person, Room, SafetyDevice, SensorDevice, VacuumDevice } from './types';
 
 type States = Map<string, EntityState>;
 
@@ -128,9 +128,23 @@ function toCover(base: CoverDevice, previous: CoverDevice | undefined, state: En
   };
 }
 
+const vacuumStatuses = new Set(['cleaning', 'docked', 'paused', 'idle', 'returning', 'error']);
+
+function toVacuum(base: VacuumDevice, previous: VacuumDevice | undefined, state: EntityState): VacuumDevice {
+  const a = state.attributes;
+  const battery = num(a.battery_level);
+  return {
+    ...base,
+    available: true,
+    status: vacuumStatuses.has(state.state) ? state.state as VacuumDevice['status'] : 'unknown',
+    battery: battery !== undefined ? Math.round(battery) : previous?.battery,
+    fanSpeed: str(a.fan_speed) ?? previous?.fanSpeed,
+    fanSpeeds: strings(a.fan_speed_list) ?? previous?.fanSpeeds,
+  };
+}
+
 /** HA 没给显示精度时的兜底：温度最多 1 位小数，湿度取整。 */
 const fallbackPrecision: Record<SensorDevice['metric'], number> = { temperature: 1, humidity: 0 };
-
 /** 按 HA 显示精度格式化数值状态（27.700006 → 27.7）；没有精度时按兜底位数去掉浮点误差、不补零；非数值状态原样保留。 */
 function formatSensorValue(raw: string, metric: SensorDevice['metric'], precision: number | undefined): string {
   const value = Number(raw);
@@ -163,6 +177,7 @@ function toDevice(base: Device, previous: Device | undefined, state: EntityState
     case 'media': return toMedia(base, previous?.kind === 'media' ? previous : undefined, state);
     case 'fan': return toFan(base, previous?.kind === 'fan' ? previous : undefined, state);
     case 'cover': return toCover(base, previous?.kind === 'cover' ? previous : undefined, state);
+    case 'vacuum': return toVacuum(base, previous?.kind === 'vacuum' ? previous : undefined, state);
     case 'sensor': return toSensor(base, state);
     case 'safety': return toSafety(base, state);
   }
@@ -198,6 +213,8 @@ function baseDevice(entity: CatalogueEntity, roomId: string, state: EntityState 
       return { ...common, kind: 'fan', on: false };
     case 'cover':
       return { ...common, kind: 'cover', state: 'unknown', supportsPosition: false, supportsStop: false };
+    case 'vacuum':
+      return { ...common, kind: 'vacuum', status: 'unknown', mapEntity: entity.mapEntityId };
     case 'sensor':
       if (entity.deviceClass !== 'temperature' && entity.deviceClass !== 'humidity') return null;
       return { ...common, kind: 'sensor', metric: entity.deviceClass, value: '', unit: entity.deviceClass === 'temperature' ? '°C' : '%', precision: entity.precision };
@@ -246,6 +263,7 @@ export function entityKindLabel(entity: Pick<CatalogueEntity, 'domain' | 'device
       if (entity.deviceClass === 'garage') return '车库门';
       return '窗帘';
     }
+    case 'vacuum': return '扫地机';
     case 'scene': return '场景';
     case 'script': return '脚本';
     case 'button': return '按钮';
@@ -336,6 +354,7 @@ export function serviceCall(after: Device, command: DeviceCommand): ServiceCall 
         // applyCommand 的乐观值是终态：切换后为 closed 说明原本开着，要收帘；反之开帘。
         return { domain: 'cover', service: after.state === 'closed' ? 'close_cover' : 'open_cover', data: {} };
       }
+      if (after.kind === 'vacuum') return { domain: 'vacuum', service: after.status === 'cleaning' || after.status === 'returning' ? 'pause' : 'start', data: {} };
       return null;
     case 'turnOff':
       if (after.kind === 'light') return { domain: 'light', service: 'turn_off', data: {} };
@@ -378,5 +397,15 @@ export function serviceCall(after: Device, command: DeviceCommand): ServiceCall 
       return { domain: 'cover', service: 'stop_cover', data: {} };
     case 'coverPosition':
       return { domain: 'cover', service: 'set_cover_position', data: { position: command.position } };
+    case 'vacuumStart':
+      return { domain: 'vacuum', service: 'start', data: {} };
+    case 'vacuumPause':
+      return { domain: 'vacuum', service: 'pause', data: {} };
+    case 'vacuumReturn':
+      return { domain: 'vacuum', service: 'return_to_base', data: {} };
+    case 'vacuumLocate':
+      return { domain: 'vacuum', service: 'locate', data: {} };
+    case 'vacuumFanSpeed':
+      return { domain: 'vacuum', service: 'set_fan_speed', data: { fan_speed: command.fanSpeed } };
   }
 }

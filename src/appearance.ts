@@ -1,5 +1,5 @@
 import {
-  AirVent, Baby, Bath, BedDouble, BedSingle, BookOpen,
+  AirVent, Baby, Bath, BedDouble, BedSingle, BookOpen, Bot,
   CookingPot, Flame, House, Lamp, ShowerHead, Sofa, UtensilsCrossed, Wind,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -138,6 +138,9 @@ export function deviceIcon(device: Device): LucideIcon {
       return brandIcons[`shutter-${Math.round(extent / 10) * 10}`];
     }
     return brandIcons['aqara-curtain'];
+  }
+  if (device.kind === 'vacuum') {
+    return Bot;
   }
   return brandIcons['bulbs-classic'];
 }

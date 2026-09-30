@@ -19,7 +19,12 @@ export type DeviceCommand =
   | { type: 'coverOpen' }
   | { type: 'coverClose' }
   | { type: 'coverStop' }
-  | { type: 'coverPosition'; position: number };
+  | { type: 'coverPosition'; position: number }
+  | { type: 'vacuumStart' }
+  | { type: 'vacuumPause' }
+  | { type: 'vacuumReturn' }
+  | { type: 'vacuumLocate' }
+  | { type: 'vacuumFanSpeed'; fanSpeed: string };
 
 /**
  * 按设备能力把操作应用到设备状态；不支持或不可用时原样返回同一个对象。
@@ -34,6 +39,11 @@ export function applyCommand(device: Device, command: DeviceCommand): Device {
         // 运动中的 opening/closing 由 HA 状态推送显示，避免确认期状态来回跳。
         const closing = device.state === 'open' || device.state === 'opening' || device.state === 'closing';
         return { ...device, state: closing ? 'closed' : 'open' };
+      }
+      if (device.kind === 'vacuum') {
+        // 清扫 / 回充中点按为暂停，其余状态（回充完成、暂停、待机）点按开始清扫。
+        const busy = device.status === 'cleaning' || device.status === 'returning';
+        return { ...device, status: busy ? 'paused' : 'cleaning' };
       }
       return 'on' in device ? { ...device, on: !device.on } : device;
     case 'turnOff':
@@ -97,5 +107,17 @@ export function applyCommand(device: Device, command: DeviceCommand): Device {
       const position = Math.min(100, Math.max(0, command.position));
       return { ...device, position, state: position <= 0 ? 'closed' : 'open' };
     }
+    case 'vacuumStart':
+      return device.kind === 'vacuum' && device.status !== 'cleaning' ? { ...device, status: 'cleaning' } : device;
+    case 'vacuumPause':
+      return device.kind === 'vacuum' && device.status !== 'paused' ? { ...device, status: 'paused' } : device;
+    case 'vacuumReturn':
+      return device.kind === 'vacuum' && device.status !== 'docked' && device.status !== 'returning' ? { ...device, status: 'returning' } : device;
+    case 'vacuumLocate':
+      // 寻找只是让机器发声，不改变状态。
+      return device;
+    case 'vacuumFanSpeed':
+      if (device.kind !== 'vacuum' || !device.fanSpeeds?.includes(command.fanSpeed)) return device;
+      return { ...device, fanSpeed: command.fanSpeed };
   }
 }

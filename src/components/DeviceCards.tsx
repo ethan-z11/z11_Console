@@ -7,6 +7,7 @@ import { CoverCard } from './CoverCard';
 import { FanCard } from './FanCard';
 import { LightCard } from './LightCard';
 import { MediaPlayerCard } from './MediaPlayerCard';
+import { VacuumCard } from './VacuumCard';
 import type { TileLayoutProps } from './TileFrame';
 
 export type TilePlacement = Omit<TileLayoutProps, 'id' | 'label' | 'allowedSizes'>;
@@ -43,6 +44,10 @@ export function DeviceCard({ device, room, tile, actions, onOpenClimate, seasonL
 
   if (device.kind === 'cover') {
     return <CoverCard layout={layout} cover={device} room={room} onOpen={actions.coverOpen} onClose={actions.coverClose} onStop={actions.coverStop} onPosition={actions.coverPosition} />;
+  }
+
+  if (device.kind === 'vacuum') {
+    return <VacuumCard layout={layout} vacuum={device} room={room} onToggle={actions.toggle} onStart={actions.vacuumStart} onPause={actions.vacuumPause} onReturn={actions.vacuumReturn} onLocate={actions.vacuumLocate} onFanSpeed={actions.vacuumFanSpeed} />;
   }
 
   return null;

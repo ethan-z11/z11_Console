@@ -171,7 +171,11 @@ export function useHome(live: LiveSource | null) {
     const before = current.devices.find((device) => device.id === id);
     if (!before) return;
     const after = applyCommand(before, command);
-    if (after === before) return;
+    if (after === before) {
+      // 无状态变化但仍需下发的指令（如扫地机“寻找”只发声）：HA 模式照常调用，演示模式无动作。
+      if (isLive && command.type === 'vacuumLocate') callHa(before, command);
+      return;
+    }
     homeRef.current = { ...current, devices: current.devices.map((device) => device.id === id ? after : device) };
     if (isLive) {
       // 记录目标值；超时后按 HA 实际状态重新生成（没确认的操作不会一直“假装成功”）。
@@ -204,6 +208,11 @@ export function useHome(live: LiveSource | null) {
     coverClose: (id) => dispatch(id, { type: 'coverClose' }),
     coverStop: (id) => dispatch(id, { type: 'coverStop' }),
     coverPosition: (id, position) => dispatch(id, { type: 'coverPosition', position }),
+    vacuumStart: (id) => dispatch(id, { type: 'vacuumStart' }),
+    vacuumPause: (id) => dispatch(id, { type: 'vacuumPause' }),
+    vacuumReturn: (id) => dispatch(id, { type: 'vacuumReturn' }),
+    vacuumLocate: (id) => dispatch(id, { type: 'vacuumLocate' }),
+    vacuumFanSpeed: (id, fanSpeed) => dispatch(id, { type: 'vacuumFanSpeed', fanSpeed }),
   };
 
   /** 进入全屋时调用：移出已关闭的设备，只保留当前正在运行的。 */
@@ -242,4 +251,9 @@ export const readOnlyActions: DeviceActions = {
   coverClose: ignore,
   coverStop: ignore,
   coverPosition: ignore,
+  vacuumStart: ignore,
+  vacuumPause: ignore,
+  vacuumReturn: ignore,
+  vacuumLocate: ignore,
+  vacuumFanSpeed: ignore,
 };

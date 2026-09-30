@@ -481,6 +481,20 @@ strong { font-weight: 600; }
 .cover-card__compact-bottom .light-card__identity { flex: 1; }
 .cover-card__compact-bottom .tile__name { font-size: 15px; }
 
+/* ---------- 扫地机器人 ---------- */
+.vacuum-card .tile__top { align-items: center; }
+.vacuum-card__battery { display: inline-flex; align-items: center; gap: 4px; flex: none; margin-left: auto; color: var(--text-2); font-size: 12px; }
+.vacuum-card__battery--low { color: var(--alert-text); }
+.tile__note--alert { color: var(--alert-text); }
+.vacuum-card__controls { display: flex; flex-direction: column; gap: 9px; margin-top: 9px; }
+.vacuum-card__map { position: relative; height: 116px; border: 1px solid var(--hairline-strong); border-radius: 14px; background: var(--surface-2); overflow: hidden; }
+.vacuum-card__map-img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.vacuum-card__map-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--text-3); font-size: 12px; }
+.vacuum-card__map--dialog { height: 210px; }
+.vacuum-card__map-overlay { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; justify-content: space-between; gap: 8px; padding: 5px 10px; border-radius: 999px; background: rgba(10, 12, 16, .55); color: #f4f1ea; font-size: 12px; backdrop-filter: blur(4px); }
+.vacuum-card__speeds { margin: 0; }
+.vacuum-card__dialog { display: flex; flex-direction: column; gap: 12px; }
+
 /* ---------- Color palette popover & light dialog ---------- */
 .light-palette { position: fixed; z-index: 1000; display: grid; gap: 16px; width: min(304px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 16px; overflow-y: auto; border: 1px solid var(--hairline-strong); border-radius: 20px; background: var(--popover); color: var(--text); box-shadow: var(--highlight), 0 24px 60px -12px rgba(0, 0, 0, .8); animation: pop-in .2s var(--ease) both; }
 .light-palette__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

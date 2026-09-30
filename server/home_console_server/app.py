@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlsplit
 
+import aiohttp
 from aiohttp import WSMsgType, web
 
 from .auth import LoginLimiter, Sessions
@@ -110,6 +111,16 @@ ALLOWED_SERVICES: dict[str, dict[str, dict[str, Callable[[Any], bool]]]] = {
         "close_cover": {},
         "stop_cover": {},
         "set_cover_position": {"position": _number(0, 100)},
+    },
+    # 扫地机器人：开始 / 暂停 / 停止清扫、回充、定点清扫、寻找、风速档位。
+    "vacuum": {
+        "start": {},
+        "pause": {},
+        "stop": {},
+        "return_to_base": {},
+        "clean_spot": {},
+        "locate": {},
+        "set_fan_speed": {"fan_speed": _short_text},
     },
     # 情景模式按钮：一键执行类实体，只允许无参数调用，且目标必须是设置中已配置的实体。
     "scene": {"turn_on": {}},
@@ -393,6 +404,47 @@ class ConsoleServer:
         if path is None:
             raise web.HTTPNotFound(text="shot not found")
         return web.FileResponse(path, headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"})
+
+    # ---------- HA 图片代理（扫地机地图 image 实体） ----------
+
+    async def ha_image(self, request: web.Request) -> web.Response:
+        """GET /api/ha-image?entity=image.xxx：用服务端令牌代理 HA 的 image_proxy，浏览器拿不到 HA 令牌。
+
+        只允许取“已显示的扫地机”关联的地图实体；卡片每几秒带不同查询串轮询，故不缓存。
+        """
+        self._require_login(request)
+        entity = request.query.get("entity", "")
+        if not re.fullmatch(r"image\.[A-Za-z0-9_]{1,64}", entity):
+            raise web.HTTPBadRequest(text="bad entity")
+        maps = {
+            item.get("mapEntityId")
+            for item in self.catalogue().get("entities", [])
+            if item.get("domain") == "vacuum" and item.get("mapEntityId")
+        }
+        if entity not in maps:
+            raise web.HTTPNotFound(text="map not found")
+        settings = self.store.settings
+        if settings.data_source != "live" or not settings.ha_url:
+            raise web.HTTPServiceUnavailable(text="HA 未连接")
+        token = self.store.token()
+        if not token:
+            raise web.HTTPServiceUnavailable(text="HA 未配置令牌")
+        url = f"{settings.ha_url}/api/image_proxy/{entity}"
+        try:
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url, headers={"Authorization": f"Bearer {token}"}) as reply:
+                    if reply.status != 200:
+                        raise web.HTTPBadGateway(text="HA image error")
+                    content_type = reply.headers.get("Content-Type", "image/jpeg")
+                    if not content_type.startswith("image/"):
+                        content_type = "image/jpeg"
+                    body = await reply.read()
+        except aiohttp.ClientError as error:
+            log.warning("代理扫地机地图 %s 失败：%s", entity, error)
+            raise web.HTTPBadGateway(text="HA image unavailable") from error
+        return web.Response(body=body, content_type=content_type,
+                            headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"})
 
     # ---------- 人员在家头像图片 ----------
 
@@ -1036,6 +1088,7 @@ def create_app(data_dir: Path, static_dir: Path | None) -> web.Application:
         web.post("/api/camera-ptz", console.camera_ptz),
         web.get("/api/camera-shots", console.camera_shots),
         web.get("/api/camera-shot", console.camera_shot),
+        web.get("/api/ha-image", console.ha_image),
         web.get("/api/people-images/{name}", console.people_image),
         web.post("/api/admin/people-image", console.upload_people_image),
         web.put("/api/layout", console.put_layout),

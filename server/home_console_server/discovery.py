@@ -2,7 +2,8 @@
 
 - 房间不再取自 HA 区域：房间由控制台设置完全手动维护（见 store.py 的 custom.json），设备手动加入房间；
   未加入任何房间的设备不在页面显示。实体上仍保留 areaId 仅作设置页参考。
-- 收录灯、温控、播放器、风扇（fan，含新风机 / 浴霸换气）、窗帘（cover）、场景类实体
+- 收录灯、温控、播放器、风扇（fan，含新风机 / 浴霸换气）、窗帘（cover）、扫地机器人（vacuum，自动关联
+  image 域的地图实体）、场景类实体
   （scene / script / button / input_button / automation）、人员，以及
   温度 / 湿度 / 电池 / 农历传感器和门窗 / 人体 / 水浸 / 烟雾类二元传感器。场景类实体只用于“情景模式”按钮，
   不生成设备卡，也不参与黑白名单（不少家庭的情景实际是无线开关的 button 实体或自动化）。
@@ -21,7 +22,7 @@ BINARY_CLASSES = {
     "moisture",
     "smoke", "gas", "carbon_monoxide",
 }
-CONTROL_DOMAINS = {"light", "climate", "media_player", "fan", "cover"}
+CONTROL_DOMAINS = {"light", "climate", "media_player", "fan", "cover", "vacuum"}
 # 情景模式按钮可指向的“一键执行”类实体域：
 # scene / script 用 turn_on，button / input_button 用 press，automation 用 trigger。
 SCENE_DOMAINS = {"scene", "script", "button", "input_button", "automation"}
@@ -74,6 +75,22 @@ def display_precision(entry: dict[str, Any]) -> int | None:
     return None
 
 
+def find_map_image(vacuum_id: str, vacuum_entry: dict[str, Any], images: list[dict[str, Any]]) -> str | None:
+    """为扫地机找地图 image 实体：优先同一 HA 设备（名字 / id 含 map 的优先），否则按对象 id 前缀匹配
+    （vacuum.xiao_zhi ↔ image.xiao_zhi_map）。image 实体本身不生成设备卡。"""
+    device_id = vacuum_entry.get("device_id")
+    same_device = [image for image in images if device_id and image["deviceId"] == device_id]
+    if same_device:
+        preferred = [image for image in same_device if "map" in f'{image["objectId"]} {image["name"]}'.lower()]
+        return (preferred or same_device)[0]["id"]
+    object_id = vacuum_id.split(".", 1)[1]
+    for image in images:
+        other = image["objectId"]
+        if other != object_id and (other.startswith(object_id) or object_id.startswith(other)):
+            return image["id"]
+    return None
+
+
 def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], registry: list[dict[str, Any]],
                     labels: list[dict[str, Any]], states: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """返回全部发现结果：labels 为标签表，rooms 为 HA 区域（仅参考），entities 为可显示的实体（不含过滤）。"""
@@ -81,9 +98,26 @@ def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], 
     device_area = {device["id"]: device.get("area_id") for device in devices}
     area_names = {area["area_id"]: area["name"] for area in areas}
     label_names = {label["label_id"]: label.get("name") or label["label_id"] for label in labels}
+    # image 域不单独成卡，只作为扫地机地图被关联（如 vacuum.xiao_zhi ↔ image.xiao_zhi_map）。
+    images: list[dict[str, Any]] = []
+    for image_id, image_state in states.items():
+        if image_id.split(".", 1)[0] != "image":
+            continue
+        image_entry = entries.get(image_id) or {}
+        if image_entry.get("disabled_by") or image_entry.get("hidden_by") or image_entry.get("entity_category"):
+            continue
+        image_attrs = image_state.get("attributes") or {}
+        images.append({
+            "id": image_id,
+            "deviceId": image_entry.get("device_id"),
+            "objectId": image_id.split(".", 1)[1],
+            "name": str(image_attrs.get("friendly_name") or image_entry.get("name") or ""),
+        })
     entities: list[dict[str, Any]] = []
     for entity_id, state in states.items():
         domain = entity_id.split(".")[0]
+        if domain == "image":
+            continue
         attributes = state.get("attributes") or {}
         entry = entries.get(entity_id) or {}
         if entry.get("disabled_by") or entry.get("hidden_by") or entry.get("entity_category"):
@@ -109,6 +143,8 @@ def build_catalogue(areas: list[dict[str, Any]], devices: list[dict[str, Any]], 
             "name": display_name(friendly, area_names.get(area_id)),
             "labels": entity_labels,
         }
+        if domain == "vacuum" and (map_image := find_map_image(entity_id, entry, images)):
+            entity["mapEntityId"] = map_image
         if not lunar and domain == "sensor" and (precision := display_precision(entry)) is not None:
             entity["precision"] = precision
         entities.append(entity)

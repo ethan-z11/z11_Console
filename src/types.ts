@@ -102,7 +102,22 @@ export interface CoverDevice extends BaseDevice {
   coverClass?: string;
 }
 
-export type Device = LightDevice | ClimateDevice | SensorDevice | SafetyDevice | MediaDevice | FanDevice | CoverDevice;
+/** HA vacuum 状态：清扫中 / 已回充 / 暂停 / 待机 / 回充中 / 异常 / 未知。 */
+export type VacuumStatus = 'cleaning' | 'docked' | 'paused' | 'idle' | 'returning' | 'error' | 'unknown';
+
+export interface VacuumDevice extends BaseDevice {
+  kind: 'vacuum';
+  status: VacuumStatus;
+  /** 电量百分比；HA 暂未上报时为 undefined。 */
+  battery?: number;
+  /** 当前清扫档位（fan_speed）。 */
+  fanSpeed?: string;
+  fanSpeeds?: string[];
+  /** HA image 实体 id（清扫地图）；没有地图实体时为 undefined。 */
+  mapEntity?: string;
+}
+
+export type Device = LightDevice | ClimateDevice | SensorDevice | SafetyDevice | MediaDevice | FanDevice | CoverDevice | VacuumDevice;
 
 export interface Person {
   id: string;
@@ -144,6 +159,12 @@ export interface DeviceActions {
   coverClose: (id: string) => void;
   coverStop: (id: string) => void;
   coverPosition: (id: string, position: number) => void;
+  /** 扫地机器人：开始清扫 / 暂停 / 回充 / 寻找 / 设置清扫档位。 */
+  vacuumStart: (id: string) => void;
+  vacuumPause: (id: string) => void;
+  vacuumReturn: (id: string) => void;
+  vacuumLocate: (id: string) => void;
+  vacuumFanSpeed: (id: string, fanSpeed: string) => void;
 }
 
 export interface LayoutState {

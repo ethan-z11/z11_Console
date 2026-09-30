@@ -55,6 +55,7 @@ const devices: Device[] = [
   { id: 'living-apple-tv', roomId: 'living', name: 'AppleTV', kind: 'media', mediaType: 'tv', available: true, status: 'off', canPower: true, canPlayPause: true },
   { id: 'living-leftpod', roomId: 'living', name: 'LeftPod', kind: 'media', mediaType: 'speaker', available: true, status: 'idle', canPlayPause: true, volume: 40 },
   { id: 'living-rightpod', roomId: 'living', name: 'RightPod', kind: 'media', mediaType: 'speaker', available: true, status: 'idle', canPlayPause: true, volume: 35 },
+  { id: 'living-vacuum', roomId: 'living', name: '小智', kind: 'vacuum', available: true, status: 'docked', battery: 88, fanSpeed: '标准', fanSpeeds: ['安静', '标准', '强力'] },
 ];
 
 /** 全屋页“常用设备”的默认清单；用户在编辑布局里加星后以 localStorage 中的为准。 */

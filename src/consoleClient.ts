@@ -29,6 +29,8 @@ export interface CatalogueEntity {
   labels: LabelInfo[];
   /** 传感器在 HA 中的显示小数位（用户设置优先，其次集成建议）；没有时为 undefined。 */
   precision?: number;
+  /** 扫地机关联的地图 image 实体 id（后端发现，仅 vacuum 域）。 */
+  mapEntityId?: string;
 }
 
 export interface Catalogue {
