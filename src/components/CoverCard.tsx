@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpFromLine, Blinds, CircleStop, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Blinds, CircleStop, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
@@ -43,6 +43,8 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
   const openDisabled = disabled || (cover.position !== undefined ? position >= 100 : cover.state === 'open');
   // 关闭按钮只在完全关闭（0%）时禁用。
   const closeDisabled = disabled || (cover.position !== undefined ? position <= 0 : cover.state === 'closed');
+  // 小卡空白处 / 电源按钮：在开与关之间反转。
+  const toggleCover = () => (active ? onClose(cover.id) : onOpen(cover.id));
   const label = `${room.name}${cover.name}`;
   const detailId = useId();
   const detailRef = useRef<HTMLDialogElement>(null);
@@ -51,7 +53,7 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
   useEffect(() => { if (disabled) setDetailOpen(false); }, [disabled]);
 
   const powerButton = (
-    <button type="button" className="tile__power" onClick={() => (active ? onClose(cover.id) : onOpen(cover.id))} disabled={disabled} aria-label={`${active ? '关闭' : '打开'}${label}`} aria-pressed={active}><DeviceIcon size={21} /></button>
+    <button type="button" className="tile__power" onClick={toggleCover} disabled={disabled} aria-label={`${active ? '关闭' : '打开'}${label}`} aria-pressed={active}><DeviceIcon size={21} /></button>
   );
 
   const wideButtons = (
@@ -64,7 +66,7 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
 
   return (
     <>
-    <TileFrame {...layout} className={`cover-card${compact ? ' cover-card--compact' : ''}`} active={active} onOpen={compact && cover.available ? () => setDetailOpen(true) : undefined}>
+    <TileFrame {...layout} className={`cover-card${compact ? ' cover-card--compact' : ''}`} active={active} onOpen={compact && cover.available ? toggleCover : undefined}>
       {!compact ? (
         <>
           <div className="tile__top">
@@ -88,12 +90,8 @@ export function CoverCard({ layout, cover, room, onOpen, onClose, onStop, onPosi
             <span className="tile__room">{room.name}</span>
           </div>
           <div className="cover-card__compact-bottom">
-            <div className="light-card__identity"><span className="tile__name">{cover.name}</span><span className="tile__note">{status}</span></div>
-            <div className="cover-card__icon-buttons">
-              <button type="button" className="cover-card__icon-button" onClick={() => onOpen(cover.id)} disabled={openDisabled} aria-label={`打开${label}`}><ArrowUpFromLine size={16} /></button>
-              {cover.supportsStop && <button type="button" className="cover-card__icon-button" onClick={() => onStop(cover.id)} disabled={disabled} aria-label={`停止${label}`}><CircleStop size={16} /></button>}
-              <button type="button" className="cover-card__icon-button" onClick={() => onClose(cover.id)} disabled={closeDisabled} aria-label={`关闭${label}`}><ArrowDownToLine size={16} /></button>
-            </div>
+            <div className="light-card__identity"><span className="tile__room tile__room--inline" aria-hidden="true">{room.name}</span><span className="tile__name">{cover.name}</span><span className="tile__note">{status}</span></div>
+            {compact && !editing && <button type="button" className="light-card__settings" onClick={() => setDetailOpen(true)} disabled={!cover.available} aria-label={`设置${label}开合位置、打开关闭和停止`} aria-haspopup="dialog" aria-controls={detailOpen ? detailId : undefined}><SlidersHorizontal size={18} /></button>}
           </div>
         </>
       )}

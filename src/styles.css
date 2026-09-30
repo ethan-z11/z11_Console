@@ -477,12 +477,9 @@ strong { font-weight: 600; }
 .cover-card__button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 38px; padding: 0; border: 1px solid var(--hairline-strong); border-radius: 12px; background: var(--surface-2); color: var(--text-2); font-size: 12.5px; transition: border-color .18s, background-color .18s, color .18s; }
 .cover-card__button:hover:not(:disabled) { border-color: var(--glow); color: var(--text); }
 .cover-card__button:disabled { opacity: .4; cursor: not-allowed; }
-.cover-card__compact-bottom { display: flex; flex-direction: column; gap: 7px; }
+.cover-card__compact-bottom { display: flex; align-items: flex-end; gap: 6px; }
+.cover-card__compact-bottom .light-card__identity { flex: 1; }
 .cover-card__compact-bottom .tile__name { font-size: 15px; }
-.cover-card__icon-buttons { display: flex; gap: 6px; }
-.cover-card__icon-button { flex: 1; display: grid; place-items: center; height: 31px; padding: 0; border: 1px solid var(--hairline-strong); border-radius: 10px; background: var(--surface-2); color: var(--text-2); transition: border-color .18s, color .18s; }
-.cover-card__icon-button:hover:not(:disabled) { border-color: var(--glow); color: var(--text); }
-.cover-card__icon-button:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ---------- Color palette popover & light dialog ---------- */
 .light-palette { position: fixed; z-index: 1000; display: grid; gap: 16px; width: min(304px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 16px; overflow-y: auto; border: 1px solid var(--hairline-strong); border-radius: 20px; background: var(--popover); color: var(--text); box-shadow: var(--highlight), 0 24px 60px -12px rgba(0, 0, 0, .8); animation: pop-in .2s var(--ease) both; }
