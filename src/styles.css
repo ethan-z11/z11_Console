@@ -1190,8 +1190,13 @@ html, body { overscroll-behavior-y: none; }
 .metric-source-scope > strong { font-size: 14px; font-weight: 600; }
 .metric-source-row { display: flex; align-items: center; gap: 8px; }
 .metric-source-row__label { display: inline-flex; align-items: center; gap: 5px; flex: none; width: 52px; color: var(--text-2); font-size: 13px; }
-.metric-source-row select { flex: 1 1 0; min-width: 0; padding: 7px 9px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--panel); color: var(--text-1); font-size: 13px; }
+.metric-source-row__current { display: inline-flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--panel); color: var(--text-1); font-size: 13px; text-align: left; cursor: pointer; }
+.metric-source-row__current:hover { border-color: var(--accent); }
+.metric-source-row__entity { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.metric-source-row__current em { flex: none; margin-left: auto; color: var(--text-3); font-size: 12px; font-style: normal; }
 .metric-source-row .icon-button { flex: none; }
+.metric-param-group { border-top: 1px solid var(--border); padding-top: 10px; }
+.customize-dialog__footer { display: flex; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--border); }
 
 /* ---------- 设置 → 房间：情景按钮管理 ---------- */
 .scene-edit-list { display: grid; gap: 14px; margin-bottom: 4px; }
@@ -1251,8 +1256,7 @@ html, body { overscroll-behavior-y: none; }
   .scene-button { flex: 1 1 auto; justify-content: center; }
   .scene-manage-row { flex-wrap: wrap; row-gap: 6px; }
   .scene-manage-row code { flex: 1 1 100%; order: 3; padding-left: 25px; }
-  .metric-source-row { flex-wrap: wrap; }
-  .metric-source-row select { flex: 1 1 140px; }
+  .metric-source-row__current em { margin-left: 8px; }
 }
 
 /* ---------- 安装为应用（PWA）：iOS 状态栏透明、内容延伸到顶部与刘海两侧 ---------- */

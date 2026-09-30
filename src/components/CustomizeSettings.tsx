@@ -54,33 +54,126 @@ const METRIC_ROWS: { metric: MetricName; label: string }[] = [
   { metric: 'humidity', label: '湿度' },
 ];
 
-/** 温湿度来源的一行：选择实体 → 选择该实体上的取值参数；可清除。房间行与主页行共用。 */
-function MetricSourceRow({ metric, label, icon, source, candidates, onSave, onAttribute, onClear }: {
+/** 温湿度来源一行：按钮打开勾选弹窗；已选时显示实体与参数，可更换或删除。 */
+function MetricSourceRow({ metric, label, icon, source, candidates, scopeName, onPick, onClear }: {
   metric: MetricName;
   label: string;
   icon: ReactNode;
   source?: { entity: string; attribute: string };
   candidates: CatalogueEntity[];
-  onSave: (entityId: string) => void;
-  onAttribute: (attribute: string) => void;
+  scopeName: string;
+  onPick: (entityId: string, attribute: string) => void;
   onClear: () => void;
 }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
   const selected = source ? candidates.find((entity) => entity.id === source.entity) : undefined;
-  const options = selected?.metrics?.filter((item) => item.metric === metric) ?? [];
-  const attributeKnown = options.some((item) => item.key === source?.attribute);
+  const attributeLabel = selected?.metrics?.find((item) => item.metric === metric && item.key === source?.attribute)?.label ?? source?.attribute;
   return (
     <div className="metric-source-row">
       <span className="metric-source-row__label">{icon}{label}</span>
-      <select value={source?.entity ?? ''} onChange={(event) => event.target.value && onSave(event.target.value)} aria-label={`选择${label}来源实体`}>
-        <option value="">不显示</option>
-        {candidates.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}（{entity.id}）</option>)}
-      </select>
-      <select value={source?.attribute ?? ''} onChange={(event) => event.target.value && onAttribute(event.target.value)} disabled={!source || options.length < 2} aria-label={`选择${label}取值参数`}>
-        {source && !attributeKnown && <option value={source.attribute}>{source.attribute}（已失效，请重选）</option>}
-        {options.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
-      </select>
+      {source
+        ? <button type="button" className="metric-source-row__current" onClick={() => setPickerOpen(true)} title="点击更换来源"><span className="metric-source-row__entity">{selected?.name ?? source.entity}</span><em>{attributeLabel}</em></button>
+        : <button type="button" className="small-button" onClick={() => setPickerOpen(true)}><Plus size={15} />选择{label}实体</button>}
       {source && <button type="button" className="icon-button" onClick={onClear} aria-label={`删除${label}来源`}><Trash2 size={16} /></button>}
+      {pickerOpen && (
+        <MetricPicker
+          metric={metric}
+          label={label}
+          scopeName={scopeName}
+          candidates={candidates}
+          current={source}
+          onClose={() => setPickerOpen(false)}
+          onSave={(entityId, attribute) => { onPick(entityId, attribute); setPickerOpen(false); }}
+        />
+      )}
     </div>
+  );
+}
+
+/** 温湿度来源勾选弹窗：先勾选实体（单选），再勾选用它的哪个数值参数（单选），完成后保存。 */
+function MetricPicker({ metric, label, scopeName, candidates, current, onSave, onClose }: {
+  metric: MetricName;
+  label: string;
+  scopeName: string;
+  candidates: CatalogueEntity[];
+  current?: { entity: string; attribute: string };
+  onSave: (entityId: string, attribute: string) => void;
+  onClose: () => void;
+}
+) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const pickerSearchId = useId();
+  const [query, setQuery] = useState('');
+  const [entityId, setEntityId] = useState(current?.entity ?? '');
+  const currentEntity = candidates.find((entity) => entity.id === entityId);
+  const options = currentEntity?.metrics?.filter((item) => item.metric === metric) ?? [];
+  const [attribute, setAttribute] = useState(current?.attribute && options.some((item) => item.key === current.attribute) ? current.attribute : options[0]?.key ?? '');
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+  const close = () => dialogRef.current?.close();
+  const handleKey = (event: KeyboardEvent<HTMLDialogElement>) => { if (event.key === 'Escape') event.preventDefault(); };
+
+  const keyword = query.trim().toLowerCase();
+  const matches = candidates.filter((entity) => !keyword || entity.name.toLowerCase().includes(keyword) || entity.id.toLowerCase().includes(keyword));
+  const chooseEntity = (id: string) => {
+    setEntityId(id);
+    const first = candidates.find((entity) => entity.id === id)?.metrics?.find((item) => item.metric === metric)?.key ?? '';
+    setAttribute(first);
+  };
+
+  return (
+    <dialog ref={dialogRef} className="device-dialog customize-dialog" aria-labelledby={`${pickerSearchId}-title`} onKeyDown={handleKey} onClose={onClose}>
+      <div className="device-dialog__heading">
+        <div><small>{scopeName}</small><h2 id={`${pickerSearchId}-title`}>选择{label}来源</h2></div>
+        <button type="button" className="icon-button" onClick={close} aria-label="完成"><X size={20} /></button>
+      </div>
+      <div className="customize-dialog__body">
+        <div className="entity-filter__tools">
+          <label className="entity-filter__search" htmlFor={`${pickerSearchId}-q`}>
+            <Search size={16} />
+            <input id={`${pickerSearchId}-q`} type="search" placeholder="搜索名称或实体 ID" value={query} onChange={(event) => setQuery(event.target.value)} />
+          </label>
+        </div>
+        {matches.length === 0 ? <p className="settings-message">没有匹配的实体</p> : (
+          <section className="entity-filter__group">
+            <h4>提供{label}的实体<em>{matches.length}</em></h4>
+            <ul>
+              {matches.map((entity) => (
+                <li key={entity.id}>
+                  <label>
+                    <input type="radio" name={`${pickerSearchId}-entity`} checked={entityId === entity.id} onChange={() => chooseEntity(entity.id)} />
+                    <span className="entity-filter__name">{entity.name}</span>
+                    <code>{entity.id}</code>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {currentEntity && options.length > 0 && (
+          <section className="entity-filter__group metric-param-group">
+            <h4>选择{label}参数<em>{options.length}</em></h4>
+            <ul>
+              {options.map((option) => (
+                <li key={option.key}>
+                  <label>
+                    <input type="radio" name={`${pickerSearchId}-attr`} checked={attribute === option.key} onChange={() => setAttribute(option.key)} />
+                    <span className="entity-filter__name">{option.label}</span>
+                    <code>{option.key === 'state' ? '状态值' : option.key}</code>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+      <div className="customize-dialog__footer">
+        <button type="button" className="small-button small-button--selected" disabled={!entityId || !attribute} onClick={() => entityId && attribute && onSave(entityId, attribute)}>完成</button>
+      </div>
+    </dialog>
   );
 }
 
@@ -281,22 +374,12 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
   }
 
   /** 保存某作用域（主页 / 房间）某指标的温湿度来源；同槽位再次保存即自动替代原条目。 */
-  function saveMetricSource(scope: string, metric: MetricName, entityId: string) {
+  function saveMetricSource(scope: string, metric: MetricName, entityId: string, attribute: string) {
     if (!custom || !data) return;
-    const entity = data.entities.find((item) => item.id === entityId);
-    const option = entity?.metrics?.find((item) => item.metric === metric);
-    if (!entity || !option) return;
     const existing = custom.metricSources?.find((item) => item.scope === scope && item.metric === metric);
     const others = (custom.metricSources ?? []).filter((item) => !(item.scope === scope && item.metric === metric));
-    const next = [...others, { id: existing?.id ?? newId('m'), scope, metric, entity: entityId, attribute: option.key }];
+    const next = [...others, { id: existing?.id ?? newId('m'), scope, metric, entity: entityId, attribute }];
     void mutate({ ...custom, metricSources: next }, metric === 'temperature' ? '温度来源已保存' : '湿度来源已保存');
-  }
-
-  /** 更换已选实体上的取值参数（同一实体提供多个同类数值参数时）。 */
-  function changeMetricAttribute(scope: string, metric: MetricName, attribute: string) {
-    if (!custom) return;
-    const metricSources = (custom.metricSources ?? []).map((item) => item.scope === scope && item.metric === metric ? { ...item, attribute } : item);
-    void mutate({ ...custom, metricSources }, '取值参数已更换');
   }
 
   function clearMetricSource(scope: string, metric: MetricName) {
@@ -374,7 +457,6 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
 
       <section className="settings-card">
         <div className="settings-card__heading"><span className="tile__chip"><Thermometer size={20} /></span><div><h3>温湿度来源</h3></div></div>
-        <p className="settings-message">为每个位置手动选择提供温度 / 湿度的实体和参数（例如空调实体自带的 current_temperature、current_humidity，不必再依赖独立传感器）；指派到房间或主页。同一位置重新选择即自动替代原来源，也可随时删除。</p>
         {metricCandidates.temperature.length + metricCandidates.humidity.length === 0
           ? <p className="settings-message">当前没有发现带温度 / 湿度数值的在线实体（空调、温湿度传感器等）。</p>
           : (
@@ -390,8 +472,8 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
                       icon={metric === 'temperature' ? <Thermometer size={14} /> : <Droplets size={14} />}
                       source={metricSourceOf(scope.id, metric)}
                       candidates={metricCandidates[metric]}
-                      onSave={(entityId) => saveMetricSource(scope.id, metric, entityId)}
-                      onAttribute={(attribute) => changeMetricAttribute(scope.id, metric, attribute)}
+                      scopeName={scope.name}
+                      onPick={(entityId, attribute) => saveMetricSource(scope.id, metric, entityId, attribute)}
                       onClear={() => clearMetricSource(scope.id, metric)}
                     />
                   ))}
