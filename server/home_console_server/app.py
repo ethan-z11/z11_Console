@@ -6,8 +6,8 @@
 - /api/admin/*：4 位管理密码登录后管理 HA 地址、令牌、控制开关、数据来源、设备过滤（黑名单 / 白名单）和管理密码，查看操作记录，
   查看并开关 HA 自动化（只调用 automation.turn_on / turn_off，见 automations.py），
   启用季节规则后由本服务在 HA 中维护季节辅助元素与季节自动化（见 season.py）。
-- /api/weather*：代理和风天气的城市搜索、实时天气与 7 天预报（见 weather.py）。
-HA 令牌与和风天气密钥只保存在服务端，从不发给浏览器。
+- /api/weather*：代理中国天气网（weather.com.cn）的城市搜索、实时天气与 7 天预报（见 weather.py）。
+HA 令牌只保存在服务端，从不发给浏览器。
 """
 
 from __future__ import annotations
@@ -150,7 +150,7 @@ class ConsoleServer:
         self.clients: set[web.WebSocketResponse] = set()
         self._tasks: set[asyncio.Task[None]] = set()
         self.upstream = HaUpstream(self._on_status, self._on_states, self._on_registry)
-        self.weather = Weather(lambda: (self.store.weather_key(), self.store.settings.weather_host, self.store.settings.weather_geo_host))
+        self.weather = Weather()
         # 自动发现：registries 为 HA 的区域 / 设备 / 实体 / 标签注册表；discovered 为过滤前的完整目录。
         self.registries: tuple[list[Any], list[Any], list[Any], list[Any]] | None = None
         self.discovered: dict[str, Any] = EMPTY_CATALOGUE
@@ -794,9 +794,6 @@ class ConsoleServer:
             if music_url != settings.music_url:
                 settings.music_url = music_url
                 changed.append("musicUrl")
-        # 天气改为中国天气网（weather.com.cn）公开接口，无需密钥 / Host；设置里残留字段直接忽略。
-        if "weatherKey" in body or "weatherHost" in body or "weatherGeoHost" in body or body.get("clearWeatherKey"):
-            self.weather.reset()
         if "allOffKinds" in body:
             valid = {"light", "climate", "fan", "cover"}
             kinds = [k for k in id_list(body["allOffKinds"]) if k in valid] if body["allOffKinds"] is not None else ["light"]
@@ -958,17 +955,6 @@ class ConsoleServer:
         await self.broadcast({"type": "layout", "layout": self.store.layout})
         return web.json_response(self.store.layout)
 
-    async def test_weather(self, request: web.Request) -> web.Response:
-        """用当前设置查询北京的实时天气，确认密钥与 Host 可用。"""
-        self._require_admin(request)
-        self.weather.reset()
-        try:
-            forecast = await self.weather.forecast("101010100")
-        except WeatherError as error:
-            return web.json_response({"ok": False, "error": str(error)})
-        now = forecast["now"]
-        return web.json_response({"ok": True, "summary": f"北京 {now.get('text')} {now.get('temp')}°"})
-
     async def get_audit(self, request: web.Request) -> web.Response:
         """读取操作记录。?event=service_call 只返回“操控设备记录”，可按事件类型过滤。"""
         self._require_admin(request)
@@ -976,7 +962,7 @@ class ConsoleServer:
         return web.json_response(self.store.recent_audit(int(request.query.get("limit", "50")), event=event))
 
 
-    # ---------- 天气（和风，只读，无需登录） ----------
+    # ---------- 天气（中国天气网，只读，无需登录） ----------
 
     async def weather_search(self, request: web.Request) -> web.Response:
         query = request.query.get("q", "").strip()
@@ -988,7 +974,7 @@ class ConsoleServer:
             return web.json_response({"error": str(error)}, status=error.status)
 
     async def weather_place(self, request: web.Request) -> web.Response:
-        """浏览器定位的坐标，或 HA 中“家”（zone.home）的坐标 → 和风位置。"""
+        """浏览器定位的坐标，或 HA 中“家”（zone.home）的坐标 → 对应城市。"""
         if request.query.get("home"):
             attributes = (self.upstream.states.get("zone.home") or {}).get("attributes") or {}
             lat, lon = attributes.get("latitude"), attributes.get("longitude")
@@ -1071,7 +1057,6 @@ def create_app(data_dir: Path, static_dir: Path | None) -> web.Application:
         web.get("/api/admin/custom", console.get_custom),
         web.put("/api/admin/custom", console.put_custom),
         web.get("/api/admin/audit", console.get_audit),
-        web.post("/api/admin/weather/test", console.test_weather),
         web.get("/api/weather", console.weather_forecast),
         web.get("/api/weather/search", console.weather_search),
         web.get("/api/weather/place", console.weather_place),

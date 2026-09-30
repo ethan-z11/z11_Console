@@ -28,10 +28,6 @@ services:
       HOME_CONSOLE_COOKIE_SAMESITE: "${HOME_CONSOLE_COOKIE_SAMESITE:-Strict}"
       # 强制 Cookie Secure（HTTPS only）。SameSite=None 时会自动开启。
       HOME_CONSOLE_COOKIE_SECURE: "${HOME_CONSOLE_COOKIE_SECURE:-}"
-      # 和风天气（可选，通常在设置页填写更安全）
-      QWEATHER_API_KEY: "${QWEATHER_API_KEY:-}"
-      QWEATHER_API_HOST: "${QWEATHER_API_HOST:-}"
-      QWEATHER_GEO_HOST: "${QWEATHER_GEO_HOST:-}"
 
     volumes:
       # 数据目录映射到宿主机 ./data，便于备份与迁移

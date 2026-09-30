@@ -6,8 +6,8 @@
 - 逐日预报：d1.weather.com.cn/weixinfc/{areaid}.html?_=时间戳
 - 站点坐标：d7.weather.com.cn/geong/v1/api?params={"method":"stationinfo","areaid":...}
 
-返回结构与原先和风天气一致（now.icon 等用数字代码），前端 weatherIcon() 无需改动；
-把天气网的两位图标代码映射到和风代码表，缺失字段用空串占位。
+返回结构沿用数字天气图标代码（now.icon 等），前端 weatherIcon() 按此映射；
+把天气网的两位图标代码映射到数字代码表，缺失字段用空串占位。
 """
 
 from __future__ import annotations
@@ -16,13 +16,12 @@ import asyncio
 import json
 import re
 import time
-from typing import Any, Callable
+from typing import Any
 
 import aiohttp
 
 WEATHER_HOST = "d1.weather.com.cn"
 SEARCH_HOST = "toy1.weather.com.cn"
-GEO_HOST = "d7.weather.com.cn"
 WEATHER_TTL = 600          # 实况 + 预报缓存 10 分钟
 GEO_TTL = 86_400           # 城市搜索缓存 1 天
 CACHE_LIMIT = 500
@@ -35,7 +34,7 @@ HTTP_HEADERS = {
 LOCATION_ID = re.compile(r"^\d{6,12}$")        # 天气网城市 ID，如 101010100
 COORDINATES = re.compile(r"^-?\d{1,3}(\.\d{1,6})?,-?\d{1,2}(\.\d{1,6})?$")
 
-# 天气网两位图标代码 → 和风图标代码（保持前端 weatherIcon 映射不变）
+# 天气网两位图标代码 → 数字图标代码（前端 weatherIcon 按此表映射）
 ICON_MAP = {
     "00": "100", "01": "101", "02": "104", "03": "300", "04": "302", "05": "313",
     "06": "401", "07": "305", "08": "306", "09": "307", "10": "308", "11": "309",
@@ -62,8 +61,8 @@ def valid_location(value: str) -> bool:
     return bool(LOCATION_ID.match(value) or COORDINATES.match(value))
 
 
-def _to_qweather_icon(code: str) -> str:
-    """天气网图标代码（'d01' / '01'）→ 和风数字代码；查不到时返回 '104'（阴）兜底。"""
+def _to_icon_code(code: str) -> str:
+    """天气网图标代码（'d01' / '01'）→ 数字图标代码；查不到时返回 '104'（阴）兜底。"""
     digits = re.sub(r"^[dn]", "", code or "")
     return ICON_MAP.get(digits, "104")
 
@@ -116,10 +115,9 @@ def _parse_var(text: str, name: str) -> Any:
 
 
 class Weather:
-    """中国天气网代理；无需密钥，config 回调保留以兼容旧调用签名（忽略密钥）。"""
+    """中国天气网代理；无需密钥。"""
 
-    def __init__(self, config: Callable[[], tuple[str, str, str]] | None = None) -> None:
-        self._config = config or (lambda: ("", "", ""))
+    def __init__(self) -> None:
         self._cache: dict[tuple[str, str, tuple[tuple[str, str], ...]], tuple[float, dict[str, Any]]] = {}
         self._session: aiohttp.ClientSession | None = None
 
@@ -198,7 +196,7 @@ class Weather:
         fc = _parse_var(fc_text, "fc") or {}
         daily_raw = fc.get("f") or []
 
-        now_icon = _to_qweather_icon(str(sk.get("weathercode", "")))
+        now_icon = _to_icon_code(str(sk.get("weathercode", "")))
         now = {
             "obsTime": f"{time.strftime('%Y-%m-%d')}T{sk.get('time', '00:00')}+08:00",
             "temp": str(sk.get("temp", "")),
@@ -226,9 +224,9 @@ class Weather:
                 "fxDate": fx_date,
                 "tempMax": str(day.get("fc", "")),
                 "tempMin": str(day.get("fd", "")),
-                "iconDay": _to_qweather_icon(str(day.get("fa", ""))),
+                "iconDay": _to_icon_code(str(day.get("fa", ""))),
                 "textDay": "",
-                "iconNight": _to_qweather_icon(str(day.get("fb", ""))),
+                "iconNight": _to_icon_code(str(day.get("fb", ""))),
                 "textNight": "",
                 "windDirDay": str(day.get("fe", "")),
                 "windScaleDay": str(day.get("fg", "")),

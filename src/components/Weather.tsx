@@ -165,7 +165,7 @@ export function WeatherDialog({ open, weather, now, onClose }: { open: boolean; 
     <dialog ref={dialogRef} className="device-dialog weather-dialog" aria-label="天气" onClose={() => { onClose(); releasePointerFocus(); }} onCancel={onClose}>
       {open && <>
         <div className="device-dialog__heading">
-          <div><small>和风天气</small><h2>天气</h2></div>
+          <div><small>中国天气网</small><h2>天气</h2></div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="关闭天气"><X size={20} /></button>
         </div>
         <PlacePicker weather={weather} />
@@ -184,7 +184,7 @@ export function WeatherDialog({ open, weather, now, onClose }: { open: boolean; 
               <WeekCard forecast={forecast} now={now} />
             </div>
             <p className="weather-source">
-              数据来源：和风天气 · 更新于 {clockOf(forecast.updateTime)}
+              数据来源：中国天气网 · 更新于 {clockOf(forecast.updateTime)}
               {error && ` · 刷新失败：${error}`}
               {forecast.fxLink && <> · <a href={forecast.fxLink} target="_blank" rel="noreferrer">查看详情</a></>}
               <button type="button" className="weather-source__refresh" onClick={refresh} disabled={loading} aria-label="刷新天气" title="刷新">

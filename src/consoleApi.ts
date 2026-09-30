@@ -7,9 +7,6 @@ export interface AdminSettings {
   hasToken: boolean;
   controlEnabled: boolean;
   dataSource: 'demo' | 'live';
-  hasWeatherKey: boolean;
-  weatherHost: string;
-  weatherGeoHost: string;
   homeTitle: string;
   brandTitle: string;
   theme: 'dark' | 'light' | 'auto';
@@ -149,8 +146,7 @@ export const createAccount = (username: string, password: string) =>
 export const deleteAccount = (id: string) => request<{ ok: true }>(`/api/admin/accounts/${encodeURIComponent(id)}`, 'DELETE');
 
 export const getSettings = () => request<AdminSettings>('/api/admin/settings');
-export const updateSettings = (patch: Partial<AdminSettings> & { haToken?: string; clearToken?: boolean; weatherKey?: string; clearWeatherKey?: boolean }) => request<AdminSettings>('/api/admin/settings', 'PUT', patch);
-export const testWeather = () => request<{ ok: boolean; summary?: string; error?: string }>('/api/admin/weather/test', 'POST');
+export const updateSettings = (patch: Partial<AdminSettings> & { haToken?: string; clearToken?: boolean }) => request<AdminSettings>('/api/admin/settings', 'PUT', patch);
 /** 上传自定义人员头像；返回文件名和 URL。 */
 export async function uploadPeopleImage(file: File): Promise<{ image: string; url: string }> {
   const form = new FormData();

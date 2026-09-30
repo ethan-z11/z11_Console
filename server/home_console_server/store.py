@@ -1,8 +1,7 @@
 """设置与审计记录的持久化。
 
-- settings.json：HA 地址、控制开关、数据来源、设备过滤（黑名单 / 白名单）、管理密码的 scrypt 哈希、加密后的 HA 令牌，
-  以及和风天气的 API Host 与加密后的密钥。文件权限 0600。
-- 令牌与和风天气密钥用 Fernet（AES-128-CBC + HMAC）加密。密钥优先取环境变量 HOME_CONSOLE_SECRET；
+- settings.json：HA 地址、控制开关、数据来源、设备过滤（黑名单 / 白名单）、管理密码的 scrypt 哈希、加密后的 HA 令牌。文件权限 0600。
+- HA 令牌用 Fernet（AES-128-CBC + HMAC）加密。密钥优先取环境变量 HOME_CONSOLE_SECRET；
   未设置时在数据目录生成 secret.key（与 Node-RED 的 _credentialSecret 同理：能读到整个数据目录的人仍可解密）。
 - layout.json：全家共用的布局（卡片尺寸、房间内顺序、常用设备、房间顺序），所有屏幕看到同一份。
 - audit.log：每行一条 JSON，记录登录、设置变更与设备控制；从不写入令牌或密码。
@@ -264,9 +263,6 @@ class Settings:
     filter_mode: str = "blacklist"  # blacklist：显示全部发现的实体，名单内的隐藏；whitelist：只显示名单内的
     blacklist: list[str] = field(default_factory=list)
     whitelist: list[str] = field(default_factory=list)
-    weather_key_encrypted: str = ""
-    weather_host: str = ""  # 空表示默认 api.qweather.com
-    weather_geo_host: str = ""  # 空表示默认 geoapi.qweather.com
     theme: str = "dark"  # dark | light | auto（日出到日落浅色，其余深色）
     home_title: str = DEFAULT_HOME_TITLE  # 首页标题，同时用作导航入口名称；不能为空
     brand_title: str = DEFAULT_BRAND_TITLE  # 家庭名称（导航栏品牌、网页标题），最长 7 个中文字
@@ -293,9 +289,6 @@ class Settings:
             "hasToken": bool(self.token_encrypted),
             "controlEnabled": self.control_enabled,
             "dataSource": self.data_source,
-            "hasWeatherKey": bool(self.weather_key_encrypted),
-            "weatherHost": self.weather_host,
-            "weatherGeoHost": self.weather_geo_host,
             "homeTitle": self.home_title,
             "brandTitle": self.brand_title,
             "theme": self.theme,
@@ -388,9 +381,6 @@ class Store:
             filter_mode="whitelist" if raw.get("filterMode") == "whitelist" else "blacklist",
             blacklist=id_list(raw.get("blacklist")) or [],
             whitelist=id_list(raw.get("whitelist")) or [],
-            weather_key_encrypted=str(raw.get("weatherKeyEncrypted", "")),
-            weather_host=str(raw.get("weatherHost", "")),
-            weather_geo_host=str(raw.get("weatherGeoHost", "")),
             theme=raw.get("theme") if raw.get("theme") in THEMES else "dark",
             home_title=str(raw.get("homeTitle") or DEFAULT_HOME_TITLE)[:HOME_TITLE_MAX],
             brand_title=str(raw.get("brandTitle") or DEFAULT_BRAND_TITLE)[:BRAND_TITLE_MAX],
@@ -414,9 +404,6 @@ class Store:
             "filterMode": settings.filter_mode,
             "blacklist": settings.blacklist,
             "whitelist": settings.whitelist,
-            "weatherKeyEncrypted": settings.weather_key_encrypted,
-            "weatherHost": settings.weather_host,
-            "weatherGeoHost": settings.weather_geo_host,
             "homeTitle": settings.home_title,
             "brandTitle": settings.brand_title,
             "theme": settings.theme,
@@ -620,12 +607,6 @@ class Store:
 
     def set_token(self, token: str) -> None:
         self.settings.token_encrypted = self._encrypt(token)
-
-    def weather_key(self) -> str:
-        return self._decrypt(self.settings.weather_key_encrypted)
-
-    def set_weather_key(self, key: str) -> None:
-        self.settings.weather_key_encrypted = self._encrypt(key)
 
     def audit(self, event: str, ip: str, username: str = "", **detail: Any) -> None:
         """审计日志：username 记录是哪个账户操作；service_call 即“操控设备记录”。"""

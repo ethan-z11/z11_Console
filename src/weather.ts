@@ -1,4 +1,4 @@
-/** 和风天气：经控制台服务 /api/weather* 获取（密钥只在服务端），以及天气代码 → 图标、日期文字等展示辅助。 */
+/** 天气：经控制台服务 /api/weather* 代理中国天气网数据，以及天气代码 → 图标、日期文字等展示辅助。 */
 import { CloudDrizzle, CloudFog, CloudHail, CloudLightning, CloudMoon, CloudMoonRain, CloudRain, CloudRainWind, CloudSnow, CloudSun, CloudSunRain, Cloud, Haze, Moon, Sun, ThermometerSnowflake, ThermometerSun, Wind } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { request } from './consoleApi';
@@ -89,7 +89,7 @@ export function savePlace(place: WeatherPlace): void {
 
 export type WeatherTone = 'sun' | 'night' | 'cloud' | 'rain' | 'storm' | 'snow' | 'fog' | 'hot' | 'cold';
 
-/** 和风天气图标代码 → 图标与色调。代码表：100 晴、101–104 云、150–153 夜间、3xx 雨、4xx 雪、5xx 雾霾沙尘、900/901 热/冷。 */
+/** 数字天气图标代码 → 图标与色调。代码表：100 晴、101–104 云、150–153 夜间、3xx 雨、4xx 雪、5xx 雾霾沙尘、900/901 热/冷。 */
 export function weatherIcon(code: string): { Icon: LucideIcon; tone: WeatherTone } {
   const value = Number(code);
   if (value === 100) return { Icon: Sun, tone: 'sun' };
@@ -124,7 +124,7 @@ export function dayLabel(fxDate: string, today: Date): { name: string; date: str
   return { name: offset === 0 ? '今天' : offset === 1 ? '明天' : weekdays[date.getDay()], date: `${month}/${day}` };
 }
 
-/** 和风时间 “2026-09-24T14:48+08:00” → “14:48”。 */
+/** ISO 时间 “2026-09-24T14:48+08:00” → “14:48”。 */
 export function clockOf(isoTime: string | undefined): string {
   return isoTime?.match(/T(\d{2}:\d{2})/)?.[1] ?? '';
 }
