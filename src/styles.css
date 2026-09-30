@@ -454,12 +454,14 @@ strong { font-weight: 600; }
 .fan-card__oscillate:hover:not(:disabled) { border-color: var(--glow); color: var(--text); }
 .fan-card__oscillate[aria-pressed="true"] { border-color: transparent; background: color-mix(in srgb, var(--glow) 26%, var(--surface-2)); color: var(--glow); font-weight: 600; }
 .fan-card__oscillate:disabled { opacity: .45; cursor: not-allowed; }
+.fan-card__oscillate:disabled[aria-pressed="true"] { border-color: var(--hairline-strong); background: var(--surface-2); color: var(--text-2); font-weight: 400; }
 .fan-card__oscillate-icon { animation: fan-oscillate-spin 1.6s linear infinite; }
 @keyframes fan-oscillate-spin { to { transform: rotate(360deg); } }
 .fan-card__preset { height: 30px; padding: 0 13px; border: 1px solid var(--hairline-strong); border-radius: 999px; background: var(--surface-2); color: var(--text-2); font-size: 12px; transition: border-color .18s, background-color .18s, color .18s; }
 .fan-card__preset:hover:not(:disabled) { border-color: var(--glow); color: var(--text); }
 .fan-card__preset[aria-pressed="true"] { border-color: transparent; background: color-mix(in srgb, var(--glow) 26%, var(--surface-2)); color: var(--glow); font-weight: 600; }
 .fan-card__preset:disabled { opacity: .45; cursor: not-allowed; }
+.fan-card__preset:disabled[aria-pressed="true"] { border-color: var(--hairline-strong); background: var(--surface-2); color: var(--text-2); font-weight: 400; }
 .fan-card__dialog-control { display: grid; gap: 18px; }
 .fan-card__dialog-presets { display: grid; gap: 10px; }
 .fan-card__dialog-presets > span { color: var(--text-3); font-size: 13px; }

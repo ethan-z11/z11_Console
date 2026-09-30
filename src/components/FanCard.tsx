@@ -61,7 +61,7 @@ export function FanCard({ layout, fan, room, onToggle, onSpeed, onPreset, onOsci
       disabled={controlsDisabled}
       aria-pressed={fan.oscillating}
     >
-      <RotateCw size={15} className={fan.oscillating ? 'fan-card__oscillate-icon' : undefined} aria-hidden="true" />摇头
+      <RotateCw size={15} className={fan.on && fan.oscillating ? 'fan-card__oscillate-icon' : undefined} aria-hidden="true" />摇头
     </button>;
 
   // 大卡下与摇头按钮同排均分行宽；弹窗中再用 .fan-card__presets 容器包起来。
