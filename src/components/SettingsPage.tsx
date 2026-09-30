@@ -50,6 +50,7 @@ const KIND_OPTIONS = [
   { value: 'climate', label: '空调/制热' },
   { value: 'fan', label: '风扇' },
   { value: 'cover', label: '窗帘' },
+  { value: 'switch', label: '开关' },
 ] as const;
 
 function kindLabel(value: string): string {

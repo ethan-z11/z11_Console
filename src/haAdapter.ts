@@ -1,6 +1,6 @@
 import type { DeviceCommand } from './deviceCommands';
 import type { Catalogue, CatalogueEntity, CustomConfig, EntityState } from './consoleClient';
-import type { BatteryReading, ClimateDevice, CoverDevice, Device, FanDevice, HomeState, LightDevice, MediaDevice, Person, Room, SafetyDevice, SensorDevice, VacuumDevice } from './types';
+import type { BatteryReading, ClimateDevice, CoverDevice, Device, FanDevice, HomeState, LightDevice, MediaDevice, Person, Room, SafetyDevice, SensorDevice, SwitchDevice, VacuumDevice } from './types';
 
 type States = Map<string, EntityState>;
 
@@ -143,8 +143,14 @@ function toVacuum(base: VacuumDevice, previous: VacuumDevice | undefined, state:
   };
 }
 
+/** 普通开关：state 仅 on/off。 */
+function toSwitch(base: SwitchDevice, state: EntityState): SwitchDevice {
+  return { ...base, available: true, on: state.state === 'on' };
+}
+
 /** HA 没给显示精度时的兜底：温度最多 1 位小数，湿度取整。 */
 const fallbackPrecision: Record<SensorDevice['metric'], number> = { temperature: 1, humidity: 0 };
+
 /** 按 HA 显示精度格式化数值状态（27.700006 → 27.7）；没有精度时按兜底位数去掉浮点误差、不补零；非数值状态原样保留。 */
 function formatSensorValue(raw: string, metric: SensorDevice['metric'], precision: number | undefined): string {
   const value = Number(raw);
@@ -178,6 +184,7 @@ function toDevice(base: Device, previous: Device | undefined, state: EntityState
     case 'fan': return toFan(base, previous?.kind === 'fan' ? previous : undefined, state);
     case 'cover': return toCover(base, previous?.kind === 'cover' ? previous : undefined, state);
     case 'vacuum': return toVacuum(base, previous?.kind === 'vacuum' ? previous : undefined, state);
+    case 'switch': return toSwitch(base, state);
     case 'sensor': return toSensor(base, state);
     case 'safety': return toSafety(base, state);
   }
@@ -215,6 +222,8 @@ function baseDevice(entity: CatalogueEntity, roomId: string, state: EntityState 
       return { ...common, kind: 'cover', state: 'unknown', supportsPosition: false, supportsStop: false };
     case 'vacuum':
       return { ...common, kind: 'vacuum', status: 'unknown', mapEntity: entity.mapEntityId };
+    case 'switch':
+      return { ...common, kind: 'switch', on: false };
     case 'sensor':
       if (entity.deviceClass !== 'temperature' && entity.deviceClass !== 'humidity') return null;
       return { ...common, kind: 'sensor', metric: entity.deviceClass, value: '', unit: entity.deviceClass === 'temperature' ? '°C' : '%', precision: entity.precision };
@@ -264,6 +273,7 @@ export function entityKindLabel(entity: Pick<CatalogueEntity, 'domain' | 'device
       return '窗帘';
     }
     case 'vacuum': return '扫地机';
+    case 'switch': return '开关';
     case 'scene': return '场景';
     case 'script': return '脚本';
     case 'button': return '按钮';
@@ -355,12 +365,14 @@ export function serviceCall(after: Device, command: DeviceCommand): ServiceCall 
         return { domain: 'cover', service: after.state === 'closed' ? 'close_cover' : 'open_cover', data: {} };
       }
       if (after.kind === 'vacuum') return { domain: 'vacuum', service: after.status === 'cleaning' || after.status === 'returning' ? 'pause' : 'start', data: {} };
+      if (after.kind === 'switch') return { domain: 'switch', service: after.on ? 'turn_on' : 'turn_off', data: {} };
       return null;
     case 'turnOff':
       if (after.kind === 'light') return { domain: 'light', service: 'turn_off', data: {} };
       if (after.kind === 'climate' || after.kind === 'heating') return { domain: 'climate', service: 'set_hvac_mode', data: { hvac_mode: 'off' } };
       if (after.kind === 'fan') return { domain: 'fan', service: 'turn_off', data: {} };
       if (after.kind === 'cover') return { domain: 'cover', service: 'close_cover', data: {} };
+      if (after.kind === 'switch') return { domain: 'switch', service: 'turn_off', data: {} };
       return null;
     case 'adjust':
       return after.kind === 'climate' || after.kind === 'heating' ? { domain: 'climate', service: 'set_temperature', data: { temperature: after.target } } : null;

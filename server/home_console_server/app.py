@@ -122,6 +122,11 @@ ALLOWED_SERVICES: dict[str, dict[str, dict[str, Callable[[Any], bool]]]] = {
         "locate": {},
         "set_fan_speed": {"fan_speed": _short_text},
     },
+    # 普通开关 / 智能插座：只有开与关。
+    "switch": {
+        "turn_on": {},
+        "turn_off": {},
+    },
     # 情景模式按钮：一键执行类实体，只允许无参数调用，且目标必须是设置中已配置的实体。
     "scene": {"turn_on": {}},
     "script": {"turn_on": {}},
@@ -847,7 +852,7 @@ class ConsoleServer:
                 settings.music_url = music_url
                 changed.append("musicUrl")
         if "allOffKinds" in body:
-            valid = {"light", "climate", "fan", "cover"}
+            valid = {"light", "climate", "fan", "cover", "switch"}
             kinds = [k for k in id_list(body["allOffKinds"]) if k in valid] if body["allOffKinds"] is not None else ["light"]
             if not kinds:
                 kinds = ["light"]

@@ -22,7 +22,7 @@ BINARY_CLASSES = {
     "moisture",
     "smoke", "gas", "carbon_monoxide",
 }
-CONTROL_DOMAINS = {"light", "climate", "media_player", "fan", "cover", "vacuum"}
+CONTROL_DOMAINS = {"light", "climate", "media_player", "fan", "cover", "vacuum", "switch"}
 # 情景模式按钮可指向的“一键执行”类实体域：
 # scene / script 用 turn_on，button / input_button 用 press，automation 用 trigger。
 SCENE_DOMAINS = {"scene", "script", "button", "input_button", "automation"}

@@ -117,7 +117,13 @@ export interface VacuumDevice extends BaseDevice {
   mapEntity?: string;
 }
 
-export type Device = LightDevice | ClimateDevice | SensorDevice | SafetyDevice | MediaDevice | FanDevice | CoverDevice | VacuumDevice;
+/** 普通开关 / 智能插座（HA switch 域）：只有开与关，无其他控制。 */
+export interface SwitchDevice extends BaseDevice {
+  kind: 'switch';
+  on: boolean;
+}
+
+export type Device = LightDevice | ClimateDevice | SensorDevice | SafetyDevice | MediaDevice | FanDevice | CoverDevice | VacuumDevice | SwitchDevice;
 
 export interface Person {
   id: string;

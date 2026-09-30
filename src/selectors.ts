@@ -25,11 +25,11 @@ export function climateSummaryTone(device: ClimateDevice): 'heat' | 'cool' {
 
 /** 设备卡只放可操控的设备；只读传感器和告警进顶部摘要。 */
 function isControllable(device: Device): boolean {
-  if (device.kind === 'light' || isClimate(device) || device.kind === 'fan' || device.kind === 'cover' || device.kind === 'vacuum') return true;
+  if (device.kind === 'light' || isClimate(device) || device.kind === 'fan' || device.kind === 'cover' || device.kind === 'vacuum' || device.kind === 'switch') return true;
   return device.kind === 'media' && Boolean(device.canPower || device.canPlayPause || device.volume !== undefined);
 }
 
-const roomOrder: Record<Device['kind'], number> = { light: 0, climate: 1, heating: 2, fan: 3, cover: 4, media: 5, vacuum: 6, sensor: 9, safety: 9 };
+const roomOrder: Record<Device['kind'], number> = { light: 0, climate: 1, heating: 2, fan: 3, cover: 4, media: 5, vacuum: 6, switch: 7, sensor: 9, safety: 9 };
 
 export function getRoomDevices(home: HomeState, roomId: string): Device[] {
   return home.devices
@@ -56,7 +56,7 @@ export function getRoomActivity(home: HomeState, roomId: string): { key: string;
 
 export function isRunning(device: Device): boolean {
   if (!device.available) return false;
-  if (device.kind === 'light' || isClimate(device) || device.kind === 'fan') return device.on;
+  if (device.kind === 'light' || isClimate(device) || device.kind === 'fan' || device.kind === 'switch') return device.on;
   if (device.kind === 'vacuum') return device.status === 'cleaning' || device.status === 'returning';
   if (device.kind === 'media') return device.status === 'playing' || device.status === 'paused' || (Boolean(device.canPower) && device.status === 'idle');
   return false;
@@ -66,7 +66,7 @@ export function runningDeviceIds(home: HomeState): string[] {
   return home.devices.filter(isRunning).map((device) => device.id);
 }
 
-const runningOrder: Record<Device['kind'], number> = { climate: 0, heating: 1, fan: 2, light: 3, media: 4, vacuum: 5, cover: 9, sensor: 9, safety: 9 };
+const runningOrder: Record<Device['kind'], number> = { climate: 0, heating: 1, fan: 2, light: 3, media: 4, vacuum: 5, switch: 6, cover: 9, sensor: 9, safety: 9 };
 
 /** 全屋“正在运行”：按空调、地暖、灯、播放器排序，同类按房间顺序。 */
 export function sortRunning(home: HomeState, devices: Device[]): Device[] {

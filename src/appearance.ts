@@ -1,5 +1,5 @@
 import {
-  AirVent, Baby, Bath, BedDouble, BedSingle, BookOpen,
+  AirVent, Baby, Bath, BedDouble, BedSingle, BookOpen, PlugZap, Power,
   CookingPot, Flame, House, Lamp, ShowerHead, Sofa, UtensilsCrossed, Wind,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -141,6 +141,10 @@ export function deviceIcon(device: Device): LucideIcon {
   }
   if (device.kind === 'vacuum') {
     return VacuumDeviceIcon;
+  }
+  if (device.kind === 'switch') {
+    // 名字像插座 / 插排时用电源插座图标，其余普通开关用电源键。
+    return /插座|插排|插线板|排插/.test(device.name) ? PlugZap : Power;
   }
   return brandIcons['bulbs-classic'];
 }
