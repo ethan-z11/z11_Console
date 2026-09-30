@@ -49,8 +49,8 @@ export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, o
   useEffect(() => { if (disabled) setDetailOpen(false); }, [disabled]);
   useEffect(() => { if (detailOpen && detailRef.current && !detailRef.current.open) detailRef.current.showModal(); }, [detailOpen]);
 
-  // 大卡常显地图；小卡只在弹窗打开时拉取。按状态调整轮询频率。
-  const mapActive = Boolean(vacuum.mapEntity) && (!compact || detailOpen);
+  // 地图只在小卡弹窗中显示（大卡不放地图），弹窗打开时才拉取。
+  const mapActive = Boolean(vacuum.mapEntity) && compact && detailOpen;
   useEffect(() => {
     if (!mapActive) return;
     const timer = window.setInterval(() => setTick((value) => value + 1), busy ? MAP_REFRESH_CLEANING_MS : MAP_REFRESH_IDLE_MS);
@@ -99,7 +99,6 @@ export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, o
       </div>
       {!compact ? (
         <div className="vacuum-card__controls">
-          <div className="vacuum-card__map">{mapImage()}</div>
           {buttons}
         </div>
       ) : <div className="cover-card__compact-bottom">

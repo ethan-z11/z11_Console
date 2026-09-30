@@ -29,3 +29,15 @@ export const brandIcons: Record<string, LucideIcon> = Object.fromEntries(
 
 /** 全部 phu 图标键名列表（供图标选择器生成选项）。 */
 export const brandIconKeys: string[] = Object.keys(defs);
+
+/** 扫地机器人俯视图图标（lucide 0.468 尚无 vacuum 图标，自制线描款与其他设备图标风格一致）。 */
+export const VacuumDeviceIcon: LucideIcon = forwardRef<SVGSVGElement, LucideProps>(function VacuumDeviceIcon({ size = 24, className, style, ...rest }, ref) {
+  return (
+    <svg ref={ref} viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className} style={style} aria-hidden="true" {...rest}>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="2.2" />
+      <circle cx="8.2" cy="8.6" r="0.6" fill="currentColor" stroke="none" />
+      <circle cx="15.8" cy="8.6" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+});
