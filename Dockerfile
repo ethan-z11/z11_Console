@@ -35,6 +35,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # 安装 uv（项目的依赖管理工具）
 RUN pip install uv
 
+# ffmpeg：摄像头 RTSP → MJPEG 实时转码、ONVIF 不支持事件时的帧差检测都依赖它。
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app/server
 
 # 安装 Python 依赖（锁定版本）
