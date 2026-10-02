@@ -81,12 +81,12 @@ export interface MetricSource {
   attribute: string;
 }
 
-/** 摄像头接入方式：rtsp 直填地址；onvif 填主机 / 端口 / 账密，取流地址由后端探测。 */
+/** 摄像头接入方式：rtsp 直填地址；onvif 填主机 / 端口 / 账密，取流地址由后端探测（可另填 rtspUrl 覆盖）。 */
 export type CameraType = 'rtsp' | 'onvif';
 
 /**
  * 自定义摄像头。
- * rtspUrl（RTSP）与 host/port/username/password（ONVIF）仅管理接口返回；
+ * rtspUrl（RTSP 必填，ONVIF 可选作画面地址覆盖）与 host/port/username/password（ONVIF）仅管理接口返回；
  * WS 推送给普通屏幕时被服务端剥离，只保留 id/name/scope/type。
  */
 export interface CameraConfig {
