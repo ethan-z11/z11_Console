@@ -105,6 +105,17 @@ export interface CameraConfig {
 /** 统一取接入类型（兼容旧数据）。 */
 export const cameraType = (camera: CameraConfig): CameraType => camera.type ?? 'rtsp';
 
+/** 天气地区（中国天气网城市）；全屋共用，保存在服务端设置里。 */
+export interface WeatherPlace {
+  id: string;
+  name: string;
+  adm2: string;
+  adm1: string;
+  country: string;
+  lat: number;
+  lon: number;
+}
+
 export type HaStatus =
   | { kind: 'disabled' }
   | { kind: 'unconfigured' }
@@ -138,6 +149,8 @@ export interface ServerStatus {
   allOffEntities?: string[];
   /** “一键关闭”排除的实体 ID（即使符合类别与区域也不关闭）。 */
   allOffExcludes?: string[];
+  /** 全屋共用的天气地区（服务端保存）；未选择时为 null。 */
+  weatherPlace?: WeatherPlace | null;
   /** 人员在家状态列表（从 HA 实体判断后由后端下发）。 */
   people?: PersonStatus[];
   /** go2rtc 低延迟流媒体：enabled 时摄像头走 WebRTC（回退 MSE/HLS/MP4/MJPEG）。 */
@@ -318,7 +331,7 @@ export class ConsoleClient {
   private handle(message: ServerMessage) {
     switch (message.type) {
       case 'hello': this.handlers.onHello(message.catalogue, message.layout, message.custom); return;
-      case 'status': this.handlers.onStatus({ dataSource: message.dataSource, controlEnabled: message.controlEnabled, homeTitle: message.homeTitle, brandTitle: message.brandTitle, theme: message.theme, tileScale: message.tileScale, accent: message.accent, season: message.season, musicUrl: message.musicUrl, allOffKinds: message.allOffKinds, allOffScopes: message.allOffScopes, allOffEntities: message.allOffEntities, allOffExcludes: message.allOffExcludes, people: message.people, go2rtc: message.go2rtc, occupancy: message.occupancy, ha: message.ha }); return;
+      case 'status': this.handlers.onStatus({ dataSource: message.dataSource, controlEnabled: message.controlEnabled, homeTitle: message.homeTitle, brandTitle: message.brandTitle, theme: message.theme, tileScale: message.tileScale, accent: message.accent, season: message.season, musicUrl: message.musicUrl, allOffKinds: message.allOffKinds, allOffScopes: message.allOffScopes, allOffEntities: message.allOffEntities, allOffExcludes: message.allOffExcludes, weatherPlace: message.weatherPlace, people: message.people, go2rtc: message.go2rtc, occupancy: message.occupancy, ha: message.ha }); return;
       case 'catalogue': this.handlers.onCatalogue(message.catalogue); return;
       case 'custom': this.handlers.onCustom(message.custom); return;
       case 'entities': this.handlers.onEntities(message.changed, Boolean(message.snapshot)); return;
