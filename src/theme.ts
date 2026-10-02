@@ -52,7 +52,8 @@ export function cachedTheme(): Theme {
   }
 }
 
-/** 强调色（设置 → 显示）：选中态、主按钮、导航高亮等使用；灯光光晕、亮度条、冷暖色、告警色按含义保持不变。 */
+/** 强调色（设置 → 显示）：选中态、主按钮、导航高亮等使用；灯光光晕、亮度条、冷暖色、告警色按含义保持不变。
+ * 前七个为经典配色；后八个取自苹果 iOS / iPadOS 系统色（深色模式值），浅色模式在 CSS 中自动换用对应浅色值。 */
 export const ACCENTS = [
   { value: 'amber', label: '琥珀', swatch: '#f4b764' },
   { value: 'coral', label: '珊瑚', swatch: '#ff8f73' },
@@ -61,6 +62,14 @@ export const ACCENTS = [
   { value: 'sky', label: '天蓝', swatch: '#6fb8ff' },
   { value: 'teal', label: '青绿', swatch: '#4fd1c1' },
   { value: 'green', label: '草绿', swatch: '#7fd67a' },
+  { value: 'blue', label: '苹果蓝', swatch: '#0a84ff' },
+  { value: 'indigo', label: '靛蓝', swatch: '#5e5ce6' },
+  { value: 'purple', label: '薰衣紫', swatch: '#bf5af2' },
+  { value: 'pink', label: '樱花粉', swatch: '#ff375f' },
+  { value: 'orange', label: '活力橙', swatch: '#ff9f0a' },
+  { value: 'yellow', label: '柠檬黄', swatch: '#ffd60a' },
+  { value: 'mint', label: '薄荷', swatch: '#63e6e2' },
+  { value: 'cyan', label: '冰青', swatch: '#64d2ff' },
 ] as const;
 export type Accent = (typeof ACCENTS)[number]['value'];
 
