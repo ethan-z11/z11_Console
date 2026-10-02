@@ -39,7 +39,7 @@ type Page = 'home' | 'room' | 'settings' | 'music';
 const favoritesScope = 'favorites';
 
 function presentDevices(devices: Device[], ids: string[]): Device[] {
-  return ids.map((id) => devices.find((device) => device.id)).filter((device): device is Device => Boolean(device));
+  return ids.map((id) => devices.find((device) => device.id === id)).filter((device): device is Device => Boolean(device));
 }
 
 /** 区域有人 / 无人徽标：仅在该区域配置了传感器时显示。 */
