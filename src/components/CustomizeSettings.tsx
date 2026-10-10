@@ -290,10 +290,21 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
   const matches = candidates
     .filter((entity) => !keyword || entity.name.toLowerCase().includes(keyword) || entity.id.toLowerCase().includes(keyword))
     .sort((a, b) => a.name.localeCompare(b.name));
+  // 勾选即自动保存（不再有保存按钮）：picked 就是该宿主的完整子设备列表，直接整体落盘。
+  const persist = (next: Set<string>) => { if (hostId) onSave(hostId, Array.from(next)); };
   const toggle = (id: string) => {
     setPicked((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
+      persist(next);
+      return next;
+    });
+  };
+  const removePicked = (id: string) => {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      persist(next);
       return next;
     });
   };
@@ -319,7 +330,7 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
       if (!nameOf.has(id)) { problems.push(`${id}：不在已发现实体中`); continue; }
       added.push(id);
     }
-    if (added.length > 0) setPicked((prev) => new Set([...prev, ...added]));
+    if (added.length > 0) setPicked((prev) => { const next = new Set([...prev, ...added]); persist(next); return next; });
     setManual('');
     const parts = [...(added.length > 0 ? [`已添加 ${added.length} 个`] : []), ...problems];
     setHint(ids.length === 0 ? null : { text: parts.join('；'), bad: added.length === 0 });
@@ -350,7 +361,7 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
             {[...picked].map((id) => (
               <span key={id} className="child-pick-chip">
                 <code title={id}>{nameOf.get(id) ?? id}</code>
-                <button type="button" onClick={() => setPicked((prev) => { const next = new Set(prev); next.delete(id); return next; })} aria-label={`移除 ${nameOf.get(id) ?? id}`}><X size={12} /></button>
+                <button type="button" onClick={() => removePicked(id)} aria-label={`移除 ${nameOf.get(id) ?? id}`}><X size={12} /></button>
               </span>
             ))}
           </div>
@@ -383,8 +394,7 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
         )}
       </div>
       <div className="customize-dialog__footer">
-        <span className="settings-message">{hostId ? `已选 ${picked.size} 个子设备` : '请先选择宿主设备'}</span>
-        <button type="button" className="small-button small-button--selected" disabled={!hostId} onClick={() => { if (hostId) onSave(hostId, Array.from(picked)); }}>保存</button>
+        <span className="settings-message">{hostId ? `勾选即保存 · 已绑定 ${picked.size} 个子设备` : '请先选择宿主设备'}</span>
       </div>
     </dialog>
   );
@@ -961,7 +971,7 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
         <div className="custom-add-row">
           <button type="button" className="small-button small-button--selected" onClick={() => setChildPicker({})}><Plus size={15} />新增绑定</button>
         </div>
-        {childPicker && <ChildBindPicker entities={data.entities} custom={custom} initialHostId={childPicker.hostId} onClose={() => setChildPicker(null)} onSave={(hostId, ids) => { saveChildren(hostId, ids); setChildPicker(null); }} />}
+        {childPicker && <ChildBindPicker entities={data.entities} custom={custom} initialHostId={childPicker.hostId} onClose={() => setChildPicker(null)} onSave={saveChildren} />}
       </CollapsibleCard>
 
       <CollapsibleCard icon={Thermometer} title="温湿度来源">
