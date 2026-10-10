@@ -267,6 +267,9 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
   }, [custom.children]);
   const [hostId, setHostId] = useState(initialHostId ?? '');
   const [picked, setPicked] = useState<Set<string>>(() => new Set(initialHostId ? childrenOf[initialHostId] ?? [] : []));
+  const [manual, setManual] = useState('');
+  const [hint, setHint] = useState<{ text: string; bad: boolean } | null>(null);
+  const nameOf = useMemo(() => new Map(entities.map((entity) => [entity.id, entity.name])), [entities]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -298,6 +301,28 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
     setHostId(id);
     // 切换宿主后同域条件变化，重置勾选为该宿主已有的绑定（若有）。
     setPicked(new Set(id ? childrenOf[id] ?? [] : []));
+    setHint(null);
+  };
+  // 手动输入实体 ID 添加子设备：空格 / 逗号分隔多个；逐条校验格式、与宿主同域、未被其他绑定占用、已在发现列表中。
+  const addManual = () => {
+    const host = entities.find((entity) => entity.id === hostId);
+    if (!host) { setHint({ text: '请先选择宿主设备', bad: true }); return; }
+    const ids = manual.split(/[\s,，;；]+/).filter(Boolean);
+    const added: string[] = [];
+    const problems: string[] = [];
+    for (const raw of ids) {
+      const id = raw.trim().toLowerCase();
+      if (!/^[a-z0-9_]{1,32}\.[a-z0-9_]{1,64}$/.test(id)) { problems.push(`${id}：实体 ID 格式不对`); continue; }
+      if (id === host.id) { problems.push('宿主本身不能作为子设备'); continue; }
+      if (id.split('.')[0] !== host.domain) { problems.push(`${id}：与宿主类型不一致（${host.domain === 'light' ? '灯只能绑灯' : '窗帘只能绑窗帘'}）`); continue; }
+      if (childOwner.has(id) || (id in childrenOf)) { problems.push(`${id}：已被其他绑定占用`); continue; }
+      if (!nameOf.has(id)) { problems.push(`${id}：不在已发现实体中`); continue; }
+      added.push(id);
+    }
+    if (added.length > 0) setPicked((prev) => new Set([...prev, ...added]));
+    setManual('');
+    const parts = [...(added.length > 0 ? [`已添加 ${added.length} 个`] : []), ...problems];
+    setHint(ids.length === 0 ? null : { text: parts.join('；'), bad: added.length === 0 });
   };
 
   return (
@@ -307,7 +332,7 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
         <button type="button" className="icon-button" onClick={close} aria-label="完成"><X size={20} /></button>
       </div>
       <div className="customize-dialog__body">
-        <p className="settings-message">先选宿主设备（灯 / 窗帘），再勾选它的子设备。保存后子设备不再单独显示卡片，只在宿主设置弹窗里以大卡片展示与控制。</p>
+        <p className="settings-message">先选宿主设备（灯 / 窗帘），再勾选或手动输入它的子设备。保存后子设备不再单独显示卡片，只在宿主设置弹窗里以大卡片展示与控制。</p>
         <label className="settings-field">
           <span>宿主设备{hostPool.length === 0 ? '（没有在线的灯 / 窗帘实体）' : ''}</span>
           <select value={hostId} onChange={(event) => changeHost(event.target.value)}>
@@ -315,6 +340,21 @@ function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
             {hostOptions.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}（{entity.id}）</option>)}
           </select>
         </label>
+        <div className="custom-add-row">
+          <input type="text" placeholder="手动输入子设备实体 ID，可用空格 / 逗号分隔多个" value={manual} onChange={(event) => { setManual(event.target.value); setHint(null); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addManual(); } }} aria-label="手动输入子设备实体 ID" />
+          <button type="button" className="small-button small-button--selected" onClick={addManual} disabled={!hostId}><Plus size={15} />添加</button>
+        </div>
+        {hint && <p className={hint.bad ? 'settings-message settings-message--error' : 'settings-message'} role="status">{hint.text}</p>}
+        {picked.size > 0 && (
+          <div className="child-pick-chips">
+            {[...picked].map((id) => (
+              <span key={id} className="child-pick-chip">
+                <code title={id}>{nameOf.get(id) ?? id}</code>
+                <button type="button" onClick={() => setPicked((prev) => { const next = new Set(prev); next.delete(id); return next; })} aria-label={`移除 ${nameOf.get(id) ?? id}`}><X size={12} /></button>
+              </span>
+            ))}
+          </div>
+        )}
         {host && (
           <>
             <div className="entity-filter__tools">
@@ -1216,6 +1256,7 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
           searchId={searchId}
           onToggle={(entityId, checked) => toggleAssignment(entityId, pickerRoom.id, checked)}
           onEdit={setEditingEntity}
+          onBindChildren={(entity) => setChildPicker({ hostId: entity.id })}
           onClose={() => setPickerRoomId(null)}
         />
       )}
@@ -1489,11 +1530,12 @@ interface DevicePickerProps {
   searchId: string;
   onToggle: (entityId: string, checked: boolean) => void;
   onEdit: (entity: CatalogueEntity) => void;
+  onBindChildren: (entity: CatalogueEntity) => void;
   onClose: () => void;
 }
 
 /** 房间设备选择器：搜索 + 标签筛选 chips，实体按标签名称分组（可重复出现在多个标签组），无标签的单独一组。 */
-function DevicePicker({ room, data, custom, searchId, onToggle, onEdit, onClose }: DevicePickerProps) {
+function DevicePicker({ room, data, custom, searchId, onToggle, onEdit, onBindChildren, onClose }: DevicePickerProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState('');
   const [activeLabel, setActiveLabel] = useState<string>('all');
@@ -1507,6 +1549,16 @@ function DevicePicker({ room, data, custom, searchId, onToggle, onEdit, onClose 
   const handleKey = (event: KeyboardEvent<HTMLDialogElement>) => { if (event.key === 'Escape') event.preventDefault(); };
 
   const devices = useMemo(() => data.entities.filter(isRoomDevice), [data.entities]);
+  // 子设备绑定概览：宿主 → 子设备数量；子设备实体集合（已是被绑定的子设备，不能再当宿主）。
+  const bound = useMemo(() => {
+    const counts = new Map<string, number>();
+    const owners = new Set<string>();
+    for (const [host, ids] of Object.entries(custom.children ?? {})) {
+      counts.set(host, ids.length);
+      for (const id of ids) owners.add(id);
+    }
+    return { counts, owners };
+  }, [custom.children]);
   const keyword = query.trim().toLowerCase();
   const matches = devices.filter((entity) => !keyword || entity.name.toLowerCase().includes(keyword) || entity.id.toLowerCase().includes(keyword) || entityKindLabel(entity).includes(keyword));
   // 已加入当前房间的实体排在最顶，方便调整；其余保持原顺序（sort 稳定）。
@@ -1566,7 +1618,9 @@ function DevicePicker({ room, data, custom, searchId, onToggle, onEdit, onClose 
                       <input type="checkbox" checked={inThisRoom} onChange={(event) => onToggle(entity.id, event.target.checked)} />
                       <span className="entity-filter__name">{displayName}</span>
                       <button type="button" className="icon-button entity-filter__edit" title="自定义名称与图标" aria-label={`自定义“${displayName}”的名称与图标`} onClick={(event) => { event.preventDefault(); onEdit(entity); }}><Pencil size={14} /></button>
+                      {(entity.domain === 'light' || entity.domain === 'cover') && !bound.owners.has(entity.id) && <button type="button" className="icon-button entity-filter__edit" title={bound.counts.get(entity.id) ? `编辑子设备绑定（现有 ${bound.counts.get(entity.id)} 个）` : '绑定子设备'} aria-label={`为“${displayName}”绑定子设备`} onClick={(event) => { event.preventDefault(); onBindChildren(entity); }}><Link2 size={14} /></button>}
                       <span className="entity-filter__kind">{entityKindLabel(entity)}</span>
+                      {bound.counts.has(entity.id) && <span className="entity-filter__tag">{bound.counts.get(entity.id)} 个子设备</span>}
                       {elsewhere && <span className="entity-filter__tag">在「{elsewhere}」</span>}
                       <code>{entity.id}</code>
                     </label>

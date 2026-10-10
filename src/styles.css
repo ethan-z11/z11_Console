@@ -1367,6 +1367,12 @@ html, body { overscroll-behavior-y: none; }
 .child-bind-row__actions { display: flex; gap: 4px; flex: none; }
 .child-bind-row__actions .icon-button { width: 32px; height: 32px; }
 @media (max-width: 560px) { .child-bind-row { flex-wrap: wrap; } .child-bind-row__actions { margin-left: auto; } }
+/* 绑定弹窗里已选子设备芯片：名称 + 移除按钮。 */
+.child-pick-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 12px; }
+.child-pick-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 6px 3px 10px; border: 1px solid var(--hairline-strong); border-radius: 999px; background: var(--surface-2); color: var(--text-2); font-size: 12px; }
+.child-pick-chip code { overflow: hidden; color: var(--text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.child-pick-chip button { display: grid; place-items: center; width: 20px; height: 20px; flex: none; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); }
+.child-pick-chip button:hover { color: var(--alert); }
 
 /* ---------- 设置 → 温湿度来源 ---------- */
 .metric-source-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
