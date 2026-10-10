@@ -74,6 +74,9 @@ export interface CustomConfig {
   occupancy?: Record<string, string[]>;
   /** 电量传感器显示偏好：主页药丸开关、手动剔除、改名、常驻实体。 */
   battery?: BatteryConfig;
+  /** 子设备绑定：宿主实体 id → 子设备实体 id 列表（灯→灯 / 窗帘→窗帘）。
+   *  子设备不再单独显示卡片，只在宿主的设置弹窗里以大卡片展示与控制。 */
+  children?: Record<string, string[]>;
 }
 
 export interface BatteryConfig {

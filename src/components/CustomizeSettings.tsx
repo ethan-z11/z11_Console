@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Battery, Cctv, DoorOpen, Droplets, House, Pencil, PersonStanding, Pin, Plus, Search, Sparkles, Thermometer, Trash2, X, ZoomIn } from 'lucide-react';
+import { ArrowDown, ArrowUp, Battery, Blinds, Cctv, DoorOpen, Droplets, House, Lightbulb, Link2, Pencil, PersonStanding, Pin, Plus, Search, Sparkles, Thermometer, Trash2, X, ZoomIn } from 'lucide-react';
 import { CollapsibleCard } from './CollapsibleCard';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
@@ -248,6 +248,108 @@ function BatteryAddPicker({ candidates, current, onSave, onClose }: {
   );
 }
 
+/** 子设备绑定弹窗：先选宿主（灯 / 窗帘），再从同类实体中多选子设备；已是其他绑定的宿主或子设备的实体不可再选。 */
+function ChildBindPicker({ entities, custom, initialHostId, onSave, onClose }: {
+  entities: CatalogueEntity[];
+  custom: CustomConfig;
+  initialHostId?: string;
+  onSave: (hostId: string, childIds: string[]) => void;
+  onClose: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const pickerId = useId();
+  const [query, setQuery] = useState('');
+  const childrenOf = custom.children ?? {};
+  const childOwner = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const [hostId, ids] of Object.entries(custom.children ?? {})) for (const id of ids) map.set(id, hostId);
+    return map;
+  }, [custom.children]);
+  const [hostId, setHostId] = useState(initialHostId ?? '');
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(initialHostId ? childrenOf[initialHostId] ?? [] : []));
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+  const close = () => dialogRef.current?.close();
+  const handleKey = (event: KeyboardEvent<HTMLDialogElement>) => { if (event.key === 'Escape') event.preventDefault(); };
+
+  // 宿主候选：在线的灯 / 窗帘，且不是任何绑定的子设备；编辑时已绑定的宿主始终可回显。
+  const hostPool = entities.filter((entity) => (entity.domain === 'light' || entity.domain === 'cover') && entity.available !== false && !childOwner.has(entity.id));
+  const host = entities.find((entity) => entity.id === hostId);
+  const hostOptions = !hostId || hostPool.some((entity) => entity.id === hostId) ? hostPool : host ? [host, ...hostPool] : hostPool;
+  // 子设备候选：与宿主同域、不是宿主自己、不是任何绑定的宿主或子设备。
+  const candidates = host
+    ? entities.filter((entity) => entity.domain === host.domain && entity.id !== host.id && !childOwner.has(entity.id) && !(entity.id in childrenOf) && entity.available !== false)
+    : [];
+  const keyword = query.trim().toLowerCase();
+  const matches = candidates
+    .filter((entity) => !keyword || entity.name.toLowerCase().includes(keyword) || entity.id.toLowerCase().includes(keyword))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const toggle = (id: string) => {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const changeHost = (id: string) => {
+    setHostId(id);
+    // 切换宿主后同域条件变化，重置勾选为该宿主已有的绑定（若有）。
+    setPicked(new Set(id ? childrenOf[id] ?? [] : []));
+  };
+
+  return (
+    <dialog ref={dialogRef} className="device-dialog customize-dialog" aria-labelledby={`${pickerId}-title`} onKeyDown={handleKey} onClose={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="device-dialog__heading">
+        <div><small>子设备绑定</small><h2 id={`${pickerId}-title`}>{initialHostId ? '编辑子设备' : '新增绑定'}</h2></div>
+        <button type="button" className="icon-button" onClick={close} aria-label="完成"><X size={20} /></button>
+      </div>
+      <div className="customize-dialog__body">
+        <p className="settings-message">先选宿主设备（灯 / 窗帘），再勾选它的子设备。保存后子设备不再单独显示卡片，只在宿主设置弹窗里以大卡片展示与控制。</p>
+        <label className="settings-field">
+          <span>宿主设备{hostPool.length === 0 ? '（没有在线的灯 / 窗帘实体）' : ''}</span>
+          <select value={hostId} onChange={(event) => changeHost(event.target.value)}>
+            <option value="">选择宿主设备</option>
+            {hostOptions.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}（{entity.id}）</option>)}
+          </select>
+        </label>
+        {host && (
+          <>
+            <div className="entity-filter__tools">
+              <label className="entity-filter__search" htmlFor={`${pickerId}-q`}>
+                <Search size={16} />
+                <input id={`${pickerId}-q`} type="search" placeholder="搜索名称或实体 ID" value={query} onChange={(event) => setQuery(event.target.value)} />
+              </label>
+            </div>
+            {matches.length === 0 ? <p className="settings-message">没有可绑定的同类型实体。</p> : (
+              <section className="entity-filter__group">
+                <h4>{host.domain === 'cover' ? '候选子窗帘' : '候选子灯'}<em>{matches.length}</em></h4>
+                <ul>
+                  {matches.map((entity) => (
+                    <li key={entity.id}>
+                      <label>
+                        <input type="checkbox" checked={picked.has(entity.id)} onChange={() => toggle(entity.id)} />
+                        <span className="entity-filter__name">{entity.name}{entity.deviceClass && <em className="entity-filter__class">{entityKindLabel(entity)}</em>}</span>
+                        <code>{entity.id}</code>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
+        )}
+      </div>
+      <div className="customize-dialog__footer">
+        <span className="settings-message">{hostId ? `已选 ${picked.size} 个子设备` : '请先选择宿主设备'}</span>
+        <button type="button" className="small-button small-button--selected" disabled={!hostId} onClick={() => { if (hostId) onSave(hostId, Array.from(picked)); }}>保存</button>
+      </div>
+    </dialog>
+  );
+}
+
 /** 温湿度来源一行：按钮打开勾选弹窗；已选时显示实体与参数，可更换或删除。 */
 function MetricSourceRow({ metric, label, icon, source, candidates, scopeName, onPick, onClear }: {
   metric: MetricName;
@@ -408,6 +510,8 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
   const [editingEntity, setEditingEntity] = useState<CatalogueEntity | null>(null);
   const [batteryAddOpen, setBatteryAddOpen] = useState(false);
+  // 子设备绑定弹窗：{} 新增（自选宿主），{ hostId } 编辑指定宿主。
+  const [childPicker, setChildPicker] = useState<{ hostId?: string } | null>(null);
 
   useEffect(() => {
     if (!connected) return;
@@ -702,6 +806,16 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
     void mutate({ ...custom, battery: nextBattery({ highlightEntity: current === id ? undefined : id }) }, current === id ? '已取消常驻显示' : '已设为常驻显示');
   }
 
+  /** 保存子设备绑定：子设备同时从房间归属中移除，保证不在任何页面显示卡片（后端也会再清一遍）。 */
+  function saveChildren(hostId: string, childIds: string[]) {
+    if (!custom) return;
+    const children = { ...(custom.children ?? {}) };
+    if (childIds.length > 0) children[hostId] = childIds; else delete children[hostId];
+    const assignments = { ...custom.assignments };
+    for (const id of childIds) delete assignments[id];
+    void mutate({ ...custom, children, assignments }, childIds.length > 0 ? '子设备绑定已保存' : '已解除绑定');
+  }
+
   if (!connected) return <section className="settings-card"><p className="settings-message">连接 Home Assistant 后，可在这里手动创建房间、添加设备和设置情景模式按钮。</p></section>;
   if (!data || !custom) return <section className="settings-card"><p className="settings-message">{error ?? '正在读取房间配置与已发现的设备…'}</p></section>;
 
@@ -714,6 +828,9 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
     .filter((group) => group.members.length > 0);
   const unlabeledTargets = sceneTargets.filter((entity) => entity.labels.length === 0);
   const entityNameById = new Map(data.entities.map((entity) => [entity.id, entity.name]));
+  const entityById = new Map(data.entities.map((entity) => [entity.id, entity]));
+  // 子设备绑定：宿主实体 id → 子实体 id 列表。
+  const childrenBindings = Object.entries(custom.children ?? {});
   // 可作为温湿度来源的实体（在线且带对应数值参数）。
   const metricCandidates: Record<MetricName, CatalogueEntity[]> = {
     temperature: data.entities.filter((entity) => entity.available !== false && entity.metrics?.some((item) => item.metric === 'temperature')),
@@ -778,6 +895,33 @@ export function CustomizeSettings({ connected, onExpired }: CustomizeSettingsPro
         )}
         {error && <p className="settings-message settings-message--error" role="alert">{error}</p>}
         {message && <p className="settings-message settings-message--good" role="status">{message}</p>}
+      </CollapsibleCard>
+
+      <CollapsibleCard icon={Link2} title="子设备绑定（灯 / 窗帘）">
+        <p className="settings-message">把某盏灯 / 某个窗帘绑定为另一个的子设备：子设备不再单独显示卡片，只在宿主卡片的设置弹窗里以大卡片展示与控制。灯只能绑定灯，窗帘只能绑定窗帘；绑定后子设备会自动移出原房间。</p>
+        {childrenBindings.length === 0 ? (
+          <p className="settings-message">还没有绑定，点击下方按钮新增。</p>
+        ) : (
+          <ul className="child-bind-list">
+            {childrenBindings.map(([hostId, ids]) => {
+              const host = entityById.get(hostId);
+              return (
+                <li key={hostId} className="child-bind-row">
+                  <span className="child-bind-row__host">{host?.domain === 'cover' ? <Blinds size={15} /> : <Lightbulb size={15} />}<strong>{host?.name ?? hostId}</strong><em>{host?.domain === 'cover' ? '窗帘' : '灯'}</em></span>
+                  <span className="child-bind-row__children">{ids.map((id) => <code key={id} title={id}>{entityNameById.get(id) ?? id}</code>)}</span>
+                  <span className="child-bind-row__actions">
+                    <button type="button" className="icon-button" onClick={() => setChildPicker({ hostId })} aria-label={`编辑 ${host?.name ?? hostId} 的子设备`} title="编辑子设备"><Pencil size={16} /></button>
+                    <button type="button" className="icon-button" onClick={() => saveChildren(hostId, [])} aria-label={`解除 ${host?.name ?? hostId} 的全部子设备`} title="解除绑定"><Trash2 size={16} /></button>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <div className="custom-add-row">
+          <button type="button" className="small-button small-button--selected" onClick={() => setChildPicker({})}><Plus size={15} />新增绑定</button>
+        </div>
+        {childPicker && <ChildBindPicker entities={data.entities} custom={custom} initialHostId={childPicker.hostId} onClose={() => setChildPicker(null)} onSave={(hostId, ids) => { saveChildren(hostId, ids); setChildPicker(null); }} />}
       </CollapsibleCard>
 
       <CollapsibleCard icon={Thermometer} title="温湿度来源">

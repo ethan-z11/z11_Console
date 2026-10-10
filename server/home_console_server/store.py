@@ -91,6 +91,9 @@ METRIC_NAMES = ("temperature", "humidity")
 # 房间有人传感器：每个作用域（主页 home / 房间）最多选择的实体数；多个为“或”关系，任一触发即有人。
 CUSTOM_OCCUPANCY_PER_SCOPE = 10
 OCCUPANCY_DOMAINS = ("binary_sensor", "sensor")
+# 子设备绑定（灯 / 窗帘）：每个宿主最多绑定的子设备数；子设备不单独显示卡片。
+CUSTOM_CHILDREN_PER_HOST = 12
+CHILD_HOST_DOMAINS = ("light", "cover")
 # binary_sensor 统一按 on 判断；sensor 实体的状态值命中其中任一（小写比较）即视为有人。
 OCCUPIED_STATES = {"on", "home", "true", "1", "yes", "occupied", "present", "有人"}
 RTSP_URL_RE = re.compile(r"^rtsp://\S+$", re.IGNORECASE)
@@ -348,8 +351,45 @@ def clean_custom(raw: Any, known_rooms: set[str] | None = None, known_entities: 
     if highlight:
         battery["highlightEntity"] = highlight
 
+    # 子设备绑定：宿主（灯 / 窗帘）实体 id → 子设备实体 id 列表。
+    # 规则：宿主必须已发现且 domain 为 light/cover；子设备与宿主同域、不能是自己、
+    # 不能已是其他绑定的宿主或子设备（禁止链式 / 重复绑定）。
+    children_in = raw.get("children") if isinstance(raw.get("children"), dict) else {}
+    children: dict[str, list[str]] = {}
+    child_owner: dict[str, str] = {}
+    for host_id, child_list in children_in.items():
+        if len(children) >= CUSTOM_ASSIGN_MAX:
+            break
+        if not isinstance(host_id, str) or not ENTITY_ID_RE.fullmatch(host_id) or host_id in children or host_id in child_owner:
+            continue
+        host_domain = host_id.split(".")[0]
+        if host_domain not in CHILD_HOST_DOMAINS:
+            continue
+        if known_entities is not None and host_id not in known_entities:
+            continue
+        picked: list[str] = []
+        for entity_id in child_list:
+            if len(picked) >= CUSTOM_CHILDREN_PER_HOST:
+                break
+            if not isinstance(entity_id, str) or not ENTITY_ID_RE.fullmatch(entity_id):
+                continue
+            if entity_id == host_id or entity_id in picked or entity_id in child_owner or entity_id in children:
+                continue
+            if entity_id.split(".")[0] != host_domain:
+                continue
+            if known_entities is not None and entity_id not in known_entities:
+                continue
+            picked.append(entity_id)
+            child_owner[entity_id] = host_id
+        if picked:
+            children[host_id] = picked
+    # 子设备不在任何页面显示卡片：从房间归属中剔除（防止旧配置残留导致仍然显示）。
+    if child_owner:
+        assignments = {entity_id: room_id for entity_id, room_id in assignments.items() if entity_id not in child_owner}
+
     return {"rooms": rooms, "assignments": assignments, "scenes": scenes, "entities": entities,
-            "cameras": cameras, "metricSources": metric_sources, "occupancy": occupancy, "battery": battery}
+            "cameras": cameras, "metricSources": metric_sources, "occupancy": occupancy, "battery": battery,
+            "children": children}
 
 
 def _battery_names(raw: Any) -> dict[str, str]:

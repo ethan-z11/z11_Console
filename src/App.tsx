@@ -41,7 +41,8 @@ type Page = 'home' | 'room' | 'settings' | 'music';
 const favoritesScope = 'favorites';
 
 function presentDevices(devices: Device[], ids: string[]): Device[] {
-  return ids.map((id) => devices.find((device) => device.id === id)).filter((device): device is Device => Boolean(device));
+  // hidden 子设备不在常用 / 正在运行等任何页面显示，只出现在宿主设置弹窗里。
+  return ids.map((id) => devices.find((device) => device.id === id)).filter((device): device is Device => Boolean(device) && device!.hidden !== true);
 }
 
 /** 区域有人 / 无人徽标：仅在该区域配置了传感器时显示。 */
@@ -396,8 +397,20 @@ function Console({ authenticated, onLogout, onAuthenticated, onOpenSetup }: Cons
     setSelectedClimateId(null);
   }
 
+  // 子设备绑定：宿主设备 id → 子设备列表（hidden），供灯 / 窗帘设置弹窗渲染大卡片。
+  const childDevicesByHost = useMemo(() => {
+    const map = new Map<string, Device[]>();
+    for (const [hostId, childIds] of Object.entries(server.custom?.children ?? {})) {
+      const list = childIds
+        .map((id) => home.devices.find((device) => device.id === id))
+        .filter((device): device is Device => Boolean(device));
+      if (list.length > 0) map.set(hostId, list);
+    }
+    return map;
+  }, [home.devices, server.custom]);
+
   function card(device: Device, room: Room, tile: TilePlacement) {
-    return <DeviceCard key={device.id} device={device} room={room} tile={tile} actions={actions} onOpenClimate={setSelectedClimateId} seasonLock={season === 'summer' && device.kind === 'heating' ? '夏季停用' : undefined} />;
+    return <DeviceCard key={device.id} device={device} room={room} tile={tile} actions={actions} onOpenClimate={setSelectedClimateId} seasonLock={season === 'summer' && device.kind === 'heating' ? '夏季停用' : undefined} childDevices={childDevicesByHost.get(device.id)} />;
   }
 
   /** 常用区卡片可在“编辑”里切换 1×1／2×1，尺寸单独保存，不影响房间里的同一设备。 */

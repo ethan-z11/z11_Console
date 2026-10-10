@@ -645,6 +645,12 @@ strong { font-weight: 600; }
 .light-detail-dialog__control:has([id$="temperature"]) input[type="range"]::-moz-range-track { background: linear-gradient(90deg, #ffab5c, #ffe6c2 42%, #e2efff 68%, #9ecaff); }
 .light-detail-dialog__control input[type="range"]::-moz-range-thumb { width: 24px; height: 24px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 3px 10px rgba(0, 0, 0, .5); }
 .light-detail-dialog__colors { display: grid; gap: 16px; padding-top: 18px; border-top: 1px solid var(--hairline); }
+/* 宿主设置弹窗里的子灯 / 子窗帘区：大卡片单列堆叠，占满弹窗宽度、高度接近 2:1。 */
+.light-detail-dialog__children { display: grid; gap: 10px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--hairline); }
+.light-detail-dialog__children-title { color: var(--text-3); font-size: 12.5px; font-weight: 500; }
+.light-detail-dialog__children-grid { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+.light-detail-dialog__children-grid .tile { height: auto; min-height: 150px; }
+.light-detail-dialog__children-grid .tile--2x1 { grid-column: auto; }
 .light-detail-dialog .light-palette__board { height: 146px; }
 @media (max-width: 360px) { .light-detail-dialog .light-palette__options--colors { grid-template-columns: repeat(5, 38px); } }
 
@@ -1348,6 +1354,19 @@ html, body { overscroll-behavior-y: none; }
 .battery-manage-excluded { margin-top: 14px; }
 .battery-manage-excluded h4 { margin: 0 0 8px; color: var(--text-3); font-size: 12.5px; font-weight: 500; }
 .battery-manage-add { display: flex; align-items: center; gap: 12px; margin: 12px 0 4px; flex-wrap: wrap; }
+
+/* 子设备绑定（灯 / 窗帘）：绑定列表一行 = 宿主 + 子设备芯片 + 操作。 */
+.child-bind-list { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.child-bind-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--bg); }
+.child-bind-row__host { display: flex; align-items: center; gap: 6px; flex: 1 1 140px; min-width: 0; font-size: 13.5px; }
+.child-bind-row__host svg { flex: none; color: var(--text-3); }
+.child-bind-row__host strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.child-bind-row__host em { flex: none; color: var(--text-3); font-size: 11.5px; font-style: normal; }
+.child-bind-row__children { display: flex; flex-wrap: wrap; gap: 4px; flex: 2 1 200px; min-width: 0; }
+.child-bind-row__children code { max-width: 100%; padding: 2px 8px; overflow: hidden; border: 1px solid var(--hairline-strong); border-radius: 999px; background: var(--surface-2); color: var(--text-2); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.child-bind-row__actions { display: flex; gap: 4px; flex: none; }
+.child-bind-row__actions .icon-button { width: 32px; height: 32px; }
+@media (max-width: 560px) { .child-bind-row { flex-wrap: wrap; } .child-bind-row__actions { margin-left: auto; } }
 
 /* ---------- 设置 → 温湿度来源 ---------- */
 .metric-source-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
