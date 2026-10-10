@@ -1,7 +1,7 @@
 import { Home } from 'lucide-react';
 import { allowedSizesForDevice } from '../layout';
 import { isClimate } from '../selectors';
-import type { Device, DeviceActions, Room } from '../types';
+import type { CoverDevice, Device, DeviceActions, LightDevice, Room } from '../types';
 import { ClimateCard } from './ClimateCard';
 import { CoverCard } from './CoverCard';
 import { FanCard } from './FanCard';
