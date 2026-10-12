@@ -47,6 +47,7 @@ log = logging.getLogger("home_console_server")
 SERVER_DIR = Path(__file__).resolve().parent.parent
 COOKIE = "hc_session"  # 会话 Cookie 名（账户系统替换原 hc_admin PIN Cookie）
 SESSION_MAX_AGE = 30 * 24 * 3600  # 记住登录：Cookie 30 天
+ADMIN_GRANT_MAX_AGE = 60 * 60  # Ingress 侧边栏访客的管理员验证：临时会话 1 小时，到期自动回到访客身份
 EMPTY_CATALOGUE: dict[str, Any] = {"labels": [], "rooms": [], "entities": []}
 REFRESH_DELAY = 0.5
 
@@ -801,7 +802,8 @@ class ConsoleServer:
                 return web.json_response({"error": "尝试次数过多", "retryAfter": locked}, status=429)
             return web.json_response({"error": "账号或密码不正确", "remaining": self.limiter.remaining_attempts()}, status=401)
         self.limiter.record_success()
-        self.store.audit("login", ip, username=account.username)
+        # Ingress 侧边栏访客验证管理员只发临时会话：审计里单独标记。
+        self.store.audit("login", ip, username=account.username, temporary=_is_ingress_request(request))
         session_id = self.sessions.create(account.username, account.is_admin, remember=remember)
         response = web.json_response({
             "ok": True,
@@ -810,7 +812,8 @@ class ConsoleServer:
             "setupCompleted": self.store.setup_completed,
         })
         # Cookie path 设为 "/"：WS 握手、摄像头流、天气等 /api/* 接口都需要带上。
-        max_age = SESSION_MAX_AGE if remember else None
+        # Ingress 侧边栏访客验证管理员时只发 1 小时临时会话：不随 remember 变成长效登录，到期自动回到访客身份。
+        max_age = ADMIN_GRANT_MAX_AGE if _is_ingress_request(request) else (SESSION_MAX_AGE if remember else None)
         response.set_cookie(COOKIE, session_id, **_cookie_attrs(request), max_age=max_age)
         return response
 

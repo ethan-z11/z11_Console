@@ -790,7 +790,7 @@ function LoginSection({ user, ingress, onLogout, onAuthenticated }: {
       <div className="settings-card__heading"><span className="tile__chip"><ShieldCheck size={20} /></span><div>
         <h3>管理员验证</h3>
         <p>{ingress
-          ? '侧边栏访问已由 Home Assistant 完成登录认证，可直接查看和控制设备；修改设置需要再验证管理员账号。'
+          ? '侧边栏访问已由 Home Assistant 完成登录认证，可直接查看和控制设备；修改设置需要再验证管理员账号，验证 1 小时后过期，需重新验证。'
           : '当前账户没有设置权限；输入管理员账号验证后可修改设置。'}</p>
       </div></div>
       <div className="settings-row">
