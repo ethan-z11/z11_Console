@@ -200,3 +200,8 @@ export interface AutomationList {
 
 export const getAutomations = () => request<AutomationList>('/api/admin/automations');
 export const setAutomation = (id: string, enabled: boolean) => request<{ ok: true; id: string; state: string }>('/api/admin/automations', 'PUT', { id, enabled });
+
+/** 设置设备延时关闭：seconds 秒后由服务端关闭该设备（设备被其它方式关闭时服务端自动作废计时）。 */
+export const setDeviceTimer = (entity: string, seconds: number) => request<{ ok: true; endsAt: number }>('/api/device-timer', 'POST', { entity, seconds });
+/** 提前取消延时关闭（不改变设备当前状态）。 */
+export const clearDeviceTimer = (entity: string) => request<{ ok: true }>('/api/device-timer', 'DELETE', { entity });
