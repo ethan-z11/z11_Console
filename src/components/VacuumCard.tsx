@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { deviceIcon } from '../appearance';
 import { releasePointerFocus } from '../focus';
 import type { Room, VacuumDevice, VacuumStatus } from '../types';
+import { DelayTimerBlock } from './DelayTimer';
 import { TileFrame } from './TileFrame';
 import type { TileLayoutProps } from './TileFrame';
 
@@ -32,10 +33,14 @@ interface VacuumCardProps {
   onReturn: (id: string) => void;
   onLocate: (id: string) => void;
   onFanSpeed: (id: string, fanSpeed: string) => void;
+  /** 延时关闭（设置弹窗内）：seconds 秒后由服务端关闭扫地机（停止清扫并回充语义交给 HA turn_off）。 */
+  onTimerSet: (id: string, seconds: number) => void;
+  /** 提前取消延时关闭。 */
+  onTimerClear: (id: string) => void;
 }
 
 /** 扫地机器人卡片：状态、电量、清扫地图（HA image 实体经后端代理）、清扫 / 回充 / 寻找与档位控制。 */
-export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, onReturn, onLocate, onFanSpeed }: VacuumCardProps) {
+export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, onReturn, onLocate, onFanSpeed, onTimerSet, onTimerClear }: VacuumCardProps) {
   const { size, editing } = layout;
   const DeviceIcon = deviceIcon(vacuum);
   const disabled = !vacuum.available || Boolean(editing);
@@ -116,6 +121,7 @@ export function VacuumCard({ layout, vacuum, room, onToggle, onStart, onPause, o
         {fanSpeeds}
         {buttons}
       </div>
+      <DelayTimerBlock device={vacuum} armed={vacuum.available && (vacuum.status === 'cleaning' || vacuum.status === 'paused' || vacuum.status === 'returning')} onSet={onTimerSet} onClear={onTimerClear} />
     </dialog>, document.body)}
     </>
   );
