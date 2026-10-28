@@ -24,7 +24,7 @@ interface MediaPlayerCardProps {
 const statusLabels: Record<MediaDevice['status'], string> = { off: '已关闭', idle: '待机', playing: '播放中', paused: '已暂停', unknown: '状态未知' };
 
 export function MediaPlayerCard({ layout, media, room, onPower, onPlayPause, onVolume, onTimerSet, onTimerClear }: MediaPlayerCardProps) {
-  const { editing, hkTiles: hk } = layout;
+  const { editing } = layout;
   const Icon = media.mediaType === 'speaker' ? Speaker : Tv;
   const label = `${room.name}${media.name}`;
   const status = media.available ? statusLabels[media.status] : '设备不可用';
@@ -49,7 +49,7 @@ export function MediaPlayerCard({ layout, media, room, onPower, onPlayPause, onV
 
   return (
     <>
-    <TileFrame {...layout} className="media-card" active={playing} onLongPress={hk && media.available ? () => setDetailOpen(true) : undefined}>
+    <TileFrame {...layout} className="media-card" active={playing} onLongPress={media.available ? () => setDetailOpen(true) : undefined}>
       {art && <div className="media-card__art" style={{ '--art': `url("${art}")` } as CSSProperties} aria-hidden="true" />}
       <div className="media-card__header">
         <span className="media-card__icon"><Icon size={21} /></span>
